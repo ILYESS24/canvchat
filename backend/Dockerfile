@@ -1,58 +1,28 @@
-FROM ghcr.io/astral-sh/uv:python3.11-alpine
+# Dockerfile for Kortix Backend (Render)
+FROM python:3.11-slim
 
-ENV ENV_MODE production
+# Set environment variables
+ENV ENV_MODE=production
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Set work directory
 WORKDIR /app
 
-RUN apk add --no-cache curl git \
-    # Dependencies for Python package compilation
-    freetype-dev \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     gcc \
-    linux-headers \
-    musl-dev \
-    python3-dev \
-    # Dependencies for WeasyPrint (PDF generation)
-    pango \
-    cairo \
-    gdk-pixbuf \
-    libffi \
-    fontconfig \
-    ttf-dejavu \
-    ttf-liberation
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY pyproject.toml uv.lock ./
-ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --quiet
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Calculate optimal worker count based on 16 vCPUs
-# Using (2*CPU)+1 formula for CPU-bound applications
-ENV WORKERS=7
-ENV THREADS=2
-ENV WORKER_CONNECTIONS=2000
+# Expose port
+EXPOSE $PORT
 
-ENV PYTHONPATH=/app
-EXPOSE 8000
-
-# Gunicorn configuration
-CMD ["sh", "-c", "uv run gunicorn api:app \
-  --workers $WORKERS \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
-  --timeout 1800 \
-  --graceful-timeout 600 \
-  --keep-alive 1800 \
-  --max-requests 0 \
-  --max-requests-jitter 0 \
-  --forwarded-allow-ips '*' \
-  --worker-connections $WORKER_CONNECTIONS \
-  --worker-tmp-dir /dev/shm \
-  --preload \
-  --log-level info \
-  --access-logfile - \
-  --error-logfile - \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --threads $THREADS"]
+# Start command
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port $PORT"]
