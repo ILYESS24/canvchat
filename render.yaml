@@ -1,0 +1,59 @@
+services:
+  # Backend API Service
+  - type: web
+    name: kortix-backend
+    runtime: python3
+    repo: https://github.com/your-username/kortix
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn api:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: ENV_MODE
+        value: production
+      - key: PYTHONPATH
+        value: /app
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: kortix-redis
+          property: connectionString
+      - key: DATABASE_URL
+        fromService:
+          type: pserv
+          name: kortix-postgres
+          property: connectionString
+
+  # Frontend Static Site
+  - type: web
+    name: kortix-frontend
+    runtime: static
+    repo: https://github.com/your-username/kortix
+    buildCommand: "pnpm install && pnpm build"
+    staticPublishPath: ./apps/frontend/.next
+    envVars:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://kortix-backend.onrender.com/v1
+      - key: NEXT_PUBLIC_URL
+        value: https://kortix-frontend.onrender.com
+      - key: NEXT_PUBLIC_ENV_MODE
+        value: production
+
+  # PostgreSQL Database
+  - type: pserv
+    name: kortix-postgres
+    runtime: postgres
+    ipAllowList: []
+
+  # Redis Cache
+  - type: redis
+    name: kortix-redis
+    ipAllowList: []
