@@ -26,7 +26,7 @@ if ! command -v render &> /dev/null; then
     echo "   Backend (Web Service):"
     echo "   - Runtime: Python 3"
     echo "   - Build Command: pip install -r requirements.txt"
-    echo "   - Start Command: uvicorn api:app --host 0.0.0.0 --port \$PORT"
+    echo "   - Start Command: python start.py"
     echo ""
     echo "   Frontend (Static Site):"
     echo "   - Build Command: pnpm install && pnpm build"
