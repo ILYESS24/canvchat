@@ -10,16 +10,26 @@ backend_dir = os.path.dirname(os.path.abspath(__file__))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-# Now import and run the app
-from api import app
-import uvicorn
+# Detect Render environment and skip Docker setup
+if os.environ.get("RENDER") or os.environ.get("PORT"):
+    print("🚀 Starting Suna API in Render environment...")
 
-if __name__ == "__main__":
+    # Import and run the FastAPI app directly
+    from api import app
+    import uvicorn
+
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
-        "api:app",
+        app,
         host="0.0.0.0",
         port=port,
         reload=False,
         log_level="info"
     )
+else:
+    print("⚠️  Setup method not detected. Run './setup.py' first or using Docker Compose as default.")
+    print("Docker Setup Detected")
+    print("Managing all Suna services with Docker Compose...")
+    print("")
+    print("❌ Docker is not running or not installed.")
+    print("Please start Docker and try again.")
