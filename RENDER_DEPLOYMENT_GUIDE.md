@@ -2,14 +2,14 @@
 
 ## ❌ Problème Résolu
 
-L'erreur `failed to read dockerfile: open Dockerfile: no such file or directory` était causée par render.yaml qui pointait vers des chemins incorrects.
+L'erreur `failed to read dockerfile: open Dockerfile: no such file or directory` était causée par l'utilisation de Docker avec des chemins incorrects.
 
 ## ✅ Solution Implémentée
 
-- ❌ Supprimé `render.yaml` (causait des conflits)
-- ✅ Ajouté `backend/Dockerfile` pour l'API Python
-- ✅ Ajouté `apps/frontend/Dockerfile` pour le frontend Next.js
-- ✅ Mis à jour `deploy-render.sh` pour déploiements Docker
+- ❌ Supprimé les `Dockerfile`s (causaient des conflits)
+- ❌ Supprimé `render.yaml` (incompatible)
+- ✅ Utilisation des **runtimes natifs Render**
+- ✅ Configuration pour **Python 3** (backend) et **Static Site** (frontend)
 
 ## 🎯 Déploiement Manuel sur Render
 
@@ -23,10 +23,10 @@ L'erreur `failed to read dockerfile: open Dockerfile: no such file or directory`
 ```
 Service Type      : Web Service
 Name              : kortix-backend
-Runtime           : Docker
+Runtime           : Python 3
 Root Directory    : backend/
-Dockerfile Path   : Dockerfile (automatique)
-Port              : 8000
+Build Command     : pip install -r requirements.txt
+Start Command     : uvicorn api:app --host 0.0.0.0 --port $PORT
 ```
 
 **Variables d'environnement pour Backend :**
@@ -45,12 +45,11 @@ PYTHONPATH=/app
 ### 3. **Créer le Frontend Service**
 
 ```
-Service Type      : Web Service
+Service Type      : Static Site
 Name              : kortix-frontend
-Runtime           : Docker
 Root Directory    : apps/frontend/
-Dockerfile Path   : Dockerfile (automatique)
-Port              : 3000
+Build Command     : pnpm install && pnpm build
+Publish Directory : .next
 ```
 
 **Variables d'environnement pour Frontend :**
