@@ -1,5 +1,24 @@
 # 🚀 Déploiement Kortix sur Render - Guide Complet
 
+## 🚨 CRITIQUE: Vérifiez la commande de démarrage
+
+**Si vous voyez l'erreur "Could not import module api", vérifiez que Render utilise :**
+
+```
+Start Command: python start.py
+```
+
+**PAS cette commande :**
+```
+uvicorn api:app --host 0.0.0.0 --port $PORT  ❌ WRONG
+```
+
+### 🔧 Comment corriger :
+
+1. Allez dans votre service Render → Settings
+2. Modifiez "Start Command" pour `python start.py`
+3. Re-déployez
+
 ## ❌ Problème Résolu
 
 L'erreur `failed to read dockerfile: open Dockerfile: no such file or directory` était causée par l'utilisation de Docker avec des chemins incorrects.
