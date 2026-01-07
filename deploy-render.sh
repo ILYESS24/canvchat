@@ -77,7 +77,7 @@ manual_instructions() {
     echo "   - Service Type: Web Service"
     echo "   - Runtime: Python 3"
     echo "   - Root Directory: backend/"
-    echo "   - Build Command: pip install -r requirements.txt"
+    echo "   - Build Command: pip install -r ../requirements.txt"
     echo "   - Start Command: uvicorn api:app --host 0.0.0.0 --port \$PORT"
     echo ""
     echo "3. ${YELLOW}Create Frontend Service${NC}:"
