@@ -1,16 +1,14 @@
 services:
-  # Frontend React App
+  # Frontend Next.js App
   - type: web
     name: kortix-frontend
     env: node
-    rootDir: .
+    rootDir: apps/frontend/
     buildCommand: npm install && npm run build
-    startCommand: npm run preview
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://kortix-backend.onrender.com/v1
     plan: starter
-    staticSiteGenerator:
-      type: vite
-      buildCommand: npm run build
-      buildDir: dist
