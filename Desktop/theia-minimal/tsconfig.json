@@ -1,0 +1,48 @@
+{
+  "extends": "../../configs/base.tsconfig",
+  "include": [],
+  "compilerOptions": {
+    "composite": true
+  },
+  "references": [
+    {
+      "path": "../../dev-packages/cli"
+    },
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/monaco"
+    },
+    {
+      "path": "../../packages/filesystem"
+    },
+    {
+      "path": "../../packages/workspace"
+    },
+    {
+      "path": "../../packages/editor"
+    },
+    {
+      "path": "../../packages/navigator"
+    },
+    {
+      "path": "../../packages/preferences"
+    },
+    {
+      "path": "../../packages/keymaps"
+    },
+    {
+      "path": "../../packages/messages"
+    },
+    {
+      "path": "../../packages/getting-started"
+    },
+    {
+      "path": "../../packages/file-search"
+    },
+    {
+      "path": "../../packages/variable-resolver"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Connection - Kortix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0a0a;
+            color: #f5f5f5;
+            text-align: center;
+            padding: 50px;
+        }
+        .status {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        .success { color: #00d9b4; }
+        .error { color: #ff4444; }
+        .link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Connexion - Kortix</h1>
+
+    <div id="status" class="status">
+        🔄 Test de connexion au serveur...
+    </div>
+
+    <div id="result"></div>
+
+    <p>
+        <a href="http://localhost:5173" class="link" target="_blank">
+            📱 Ouvrir Kortix (localhost:5173)
+        </a>
+    </p>
+
+    <script>
+        // Test de connexion au serveur
+        fetch('http://localhost:5173', {
+            method: 'HEAD',
+            mode: 'no-cors'
+        })
+        .then(() => {
+            document.getElementById('status').innerHTML = '✅ Serveur connecté !';
+            document.getElementById('status').className = 'status success';
+            document.getElementById('result').innerHTML = `
+                <p>🎉 L'application Kortix fonctionne parfaitement !</p>
+                <p>Cliquez sur le lien ci-dessus pour accéder à l'interface.</p>
+            `;
+        })
+        .catch(() => {
+            document.getElementById('status').innerHTML = '❌ Serveur non accessible';
+            document.getElementById('status').className = 'status error';
+            document.getElementById('result').innerHTML = `
+                <p>🚨 Le serveur de développement n'est pas démarré.</p>
+                <p>Assurez-vous que la commande suivante fonctionne :</p>
+                <code>cd suna-main && npx vite --host --port 5173</code>
+            `;
+        });
+    </script>
+</body>
+</html>

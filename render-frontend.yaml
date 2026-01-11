@@ -1,0 +1,16 @@
+services:
+  # Frontend React App
+  - type: web
+    name: kortix-frontend
+    env: node
+    rootDir: .
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    envVars:
+      - key: NODE_ENV
+        value: production
+    plan: starter
+    staticSiteGenerator:
+      type: vite
+      buildCommand: npm run build
+      buildDir: dist

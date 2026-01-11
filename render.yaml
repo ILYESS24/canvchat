@@ -1,0 +1,11 @@
+# FRONTEND ONLY - Static Site pour l'interface React
+# ⚠️  IMPORTANT: Creez un NOUVEAU service Render de type "Static Site"
+# Ne reutilisez PAS l'ancien service backend !
+services:
+  - type: static_site
+    name: kortix-frontend-only
+    sourceDir: .
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    pullRequestPreviewsEnabled: true
+    plan: starter

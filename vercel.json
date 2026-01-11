@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/frontend/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/apps/frontend/$1"
+    }
+  ],
+  "env": {
+    "ENV_MODE": "production",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://temp.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "temp-key",
+    "SUPABASE_URL": "https://temp.supabase.co",
+    "SUPABASE_ANON_KEY": "temp-key",
+    "SUPABASE_SERVICE_ROLE_KEY": "temp-key"
+  }
+}

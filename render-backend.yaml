@@ -1,0 +1,13 @@
+services:
+  # BACKEND - API FastAPI
+  - type: web
+    name: kortix-backend
+    env: python
+    rootDir: backend/
+    buildCommand: pip install -r ../requirements.txt
+    startCommand: python simple_api.py
+    envVars:
+      - key: ENV_MODE
+        value: production
+    healthCheckPath: /v1/health
+    plan: starter
