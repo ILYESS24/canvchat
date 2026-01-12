@@ -1,11 +1,15 @@
-# FRONTEND ONLY - Static Site pour l'interface React
-# ⚠️  IMPORTANT: Creez un NOUVEAU service Render de type "Static Site"
-# Ne reutilisez PAS l'ancien service backend !
+# FRONTEND ONLY - Application Next.js complète
+# Déploie seulement l'interface frontend (landing page)
 services:
-  - type: static_site
-    name: kortix-frontend-only
-    sourceDir: .
+  - type: web
+    name: kortix-landing-page
+    env: node
+    rootDir: apps/frontend/
     buildCommand: npm install && npm run build
-    publishDir: dist
-    pullRequestPreviewsEnabled: true
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
     plan: starter
+    # Utilise la branche production-ready qui contient seulement la landing page
+    branch: production-ready
