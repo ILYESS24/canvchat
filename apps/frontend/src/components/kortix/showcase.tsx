@@ -1,5 +1,3 @@
-'use client';
-
 const showcaseItems = [
   {
     id: 'slides',

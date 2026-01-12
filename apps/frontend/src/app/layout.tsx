@@ -1,23 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { AuthProvider } from '@/components/AuthProvider';
-import { ReactQueryProvider } from './react-query-provider';
-import { PresenceProvider } from '@/components/presence-provider';
-
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' }
-  ],
+  themeColor: 'white',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
 };
 
 export const metadata: Metadata = {
-  title: 'Suna AI Platform',
-  description: 'Your Autonomous AI Platform',
+  title: 'Kortix - Your Autonomous AI Worker',
+  description: 'Built for complex tasks, designed for everything. The ultimate AI assistant that handles it all.',
 };
 
 export default function RootLayout({
@@ -26,13 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <PresenceProvider>
-            <ReactQueryProvider>
-              {children}
-            </ReactQueryProvider>
-          </PresenceProvider>
-        </AuthProvider>
+        {children}
       </body>
     </html>
   );

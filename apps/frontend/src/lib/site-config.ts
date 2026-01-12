@@ -1,50 +1,32 @@
-import { pricingTiers, type PricingTier } from '@/lib/pricing-config';
-
-// Re-export for backward compatibility
-export type { PricingTier } from '@/lib/pricing-config';
-
-// Configuration spécifique pour la version web de Suna
 export const siteConfig = {
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  nav: {
-    links: [
-      { id: 1, name: 'Home', href: '/' },
-      { id: 2, name: 'About', href: '/about' },
-      { id: 3, name: 'Careers', href: '/careers' },
-    ],
-  },
   hero: {
-    description:
-      'Kortix – open-source platform to build, manage and train your AI Workforce.',
+    description: "The complete platform for creating autonomous AI agents that work for you"
   },
-  cloudPricingItems: pricingTiers,
   footerLinks: [
     {
-      title: 'Kortix',
+      title: "Kortix",
       links: [
-        { id: 1, title: 'About', url: '/about' },
-        { id: 2, title: 'Careers', url: '/careers' },
-        { id: 3, title: 'Support', url: '/support' },
-        { id: 4, title: 'Contact', url: 'mailto:hey@kortix.com' },
-      ],
+        { title: "About", url: "/about" },
+        { title: "Careers", url: "/careers" },
+        { title: "Support", url: "/support" },
+        { title: "Contact", url: "/contact" }
+      ]
     },
     {
-      title: 'Resources',
+      title: "Resources",
       links: [
-        { id: 5, title: 'Documentation', url: 'https://github.com/kortix-ai/suna' },
-        { id: 6, title: 'Discord', url: 'https://discord.com/invite/RvFhXUdZ9H' },
-        { id: 7, title: 'GitHub', url: 'https://github.com/kortix-ai/suna' },
-      ],
+        { title: "Documentation", url: "/docs" },
+        { title: "Discord", url: "https://discord.com" },
+        { title: "GitHub", url: "https://github.com" }
+      ]
     },
     {
-      title: 'Legal',
+      title: "Legal",
       links: [
-        { id: 8, title: 'Privacy Policy', url: '/legal?tab=privacy' },
-        { id: 9, title: 'Terms of Service', url: '/legal?tab=terms' },
-        { id: 10, title: 'License', url: 'https://github.com/kortix-ai/suna/blob/main/LICENSE' },
-      ],
-    },
-  ],
+        { title: "Privacy Policy", url: "/privacy" },
+        { title: "Terms of Service", url: "/terms" },
+        { title: "License", url: "/license" }
+      ]
+    }
+  ]
 };
-
-export type SiteConfig = typeof siteConfig;

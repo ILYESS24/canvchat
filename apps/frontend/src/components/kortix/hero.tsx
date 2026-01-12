@@ -1,5 +1,3 @@
-'use client';
-
 export function KortixHero() {
   return (
     <section className="bg-white py-20">
