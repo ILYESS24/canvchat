@@ -1,24 +1,19 @@
 'use client';
 
-import { HeroSection } from '@/components/home/hero-section';
-import { ShowCaseSection } from '@/components/home/showcase-section';
-import { Navbar } from '@/components/home/navbar';
-import { FooterSection } from '@/components/home/footer-section';
-import { ThemeProvider } from '@/components/home/theme-provider';
-import { CookieConsent } from '@/components/cookie-consent';
+import { KortixHeader } from '@/components/kortix/header';
+import { KortixHero } from '@/components/kortix/hero';
+import { KortixShowcase } from '@/components/kortix/showcase';
+import { KortixFooter } from '@/components/kortix/footer';
 
 export function LandingPage() {
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main>
-          <HeroSection />
-          <ShowCaseSection />
-        </main>
-        <FooterSection />
-        <CookieConsent />
-      </div>
-    </ThemeProvider>
+    <div className="min-h-screen bg-white">
+      <KortixHeader />
+      <main>
+        <KortixHero />
+        <KortixShowcase />
+      </main>
+      <KortixFooter />
+    </div>
   );
 }
