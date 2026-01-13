@@ -618,107 +618,17 @@ async def _memory_watchdog():
     except Exception as e:
         logger.error(f"Memory watchdog failed: {e}")
 
-# Frontend serving routes - Backend API only, frontend is served separately
+# Frontend serving routes - Backend API only, redirect to frontend
 @app.get("/")
 async def serve_frontend_root():
-    """Backend API root - Frontend is served from a separate Next.js service."""
-    from fastapi.responses import HTMLResponse
-    
+    """Backend API root - Redirect to frontend service."""
+    from fastapi.responses import RedirectResponse
+
     # Get frontend URL from environment or use default
     frontend_url = os.getenv("FRONTEND_URL", "https://kortix-frontend.onrender.com")
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Kortix AI - Backend API</title>
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-                color: #f5f5f5;
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }}
-            .container {{
-                max-width: 600px;
-                text-align: center;
-                background: rgba(255, 255, 255, 0.05);
-                border-radius: 16px;
-                padding: 40px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }}
-            h1 {{
-                font-size: 2rem;
-                margin-bottom: 20px;
-                background: linear-gradient(135deg, #00d9b4, #3b82f6);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }}
-            .message {{
-                font-size: 1.1rem;
-                color: #a0a0a0;
-                margin-bottom: 30px;
-                line-height: 1.6;
-            }}
-            .cta-button {{
-                display: inline-block;
-                background: linear-gradient(135deg, #00d9b4, #3b82f6);
-                color: white;
-                padding: 15px 30px;
-                border-radius: 8px;
-                text-decoration: none;
-                font-weight: 600;
-                margin: 10px;
-                transition: transform 0.2s;
-            }}
-            .cta-button:hover {{
-                transform: translateY(-2px);
-            }}
-            .api-links {{
-                margin-top: 30px;
-                padding-top: 30px;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-            }}
-            .api-links a {{
-                color: #00d9b4;
-                text-decoration: none;
-                margin: 0 15px;
-            }}
-            .api-links a:hover {{
-                text-decoration: underline;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🚀 Kortix AI Backend API</h1>
-            <p class="message">
-                Ceci est le backend API. L'interface utilisateur est disponible sur le service frontend séparé.
-            </p>
-            <a href="{frontend_url}" class="cta-button">Accéder à l'interface →</a>
-            <div class="api-links">
-                <a href="/docs">📚 Documentation API</a>
-                <a href="/v1/health">🏥 Health Check</a>
-                <a href="/api">ℹ️ API Info</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+
+    logger.debug(f"🔄 Redirecting root path to frontend: {frontend_url}")
+    return RedirectResponse(url=frontend_url, status_code=302)
 
 # Catch-all route for non-API paths - redirect to frontend
 @app.get("/{full_path:path}")
