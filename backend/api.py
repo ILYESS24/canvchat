@@ -123,6 +123,12 @@ async def lifespan(app: FastAPI):
         # Start memory watchdog for observability
         _memory_watchdog_task = asyncio.create_task(_memory_watchdog())
         
+        # Start Next.js frontend server
+        logger.info("🚀 Starting Next.js frontend server...")
+        start_nextjs_server()
+        # Wait a bit for Next.js to start
+        await asyncio.sleep(2)
+        
         yield
 
         # Shutdown sequence: Set flag first so health checks fail
@@ -168,6 +174,9 @@ async def lifespan(app: FastAPI):
 
         logger.debug("Disconnecting from database")
         await db.disconnect()
+        
+        # Stop Next.js server
+        stop_nextjs_server()
     except Exception as e:
         logger.error(f"Error during application startup: {e}")
         raise
@@ -618,35 +627,164 @@ async def _memory_watchdog():
     except Exception as e:
         logger.error(f"Memory watchdog failed: {e}")
 
-# Frontend serving routes - Backend API only, redirect to frontend
+# Frontend serving - Start Next.js server as subprocess and proxy requests
+import subprocess
+import signal
+import atexit
+from fastapi.responses import StreamingResponse
+try:
+    import httpx
+except ImportError:
+    httpx = None
+    logger.warning("httpx not installed - frontend proxying will not work")
+
+_nextjs_process = None
+_nextjs_url = "http://localhost:3000"
+
+def start_nextjs_server():
+    """Start Next.js server as background process."""
+    global _nextjs_process
+    
+    # Find Next.js standalone build
+    possible_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "apps", "frontend", ".next", "standalone"),
+        os.path.join(os.getcwd(), "apps", "frontend", ".next", "standalone"),
+        "/opt/render/project/src/apps/frontend/.next/standalone",
+    ]
+    
+    standalone_dir = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            standalone_dir = path
+            logger.info(f"✅ Found Next.js standalone build at: {path}")
+            break
+    
+    if not standalone_dir:
+        logger.warning("❌ Next.js standalone build not found - frontend will not be available")
+        return False
+    
+    # Start Next.js server
+    try:
+        server_script = os.path.join(standalone_dir, "apps", "frontend", "server.js")
+        if not os.path.exists(server_script):
+            logger.warning(f"❌ Next.js server.js not found at: {server_script}")
+            return False
+        
+        # Change to standalone directory and start server
+        env = os.environ.copy()
+        env["PORT"] = "3000"
+        env["NODE_ENV"] = "production"
+        
+        _nextjs_process = subprocess.Popen(
+            ["node", "server.js"],
+            cwd=os.path.join(standalone_dir, "apps", "frontend"),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        logger.info(f"✅ Started Next.js server (PID: {_nextjs_process.pid})")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to start Next.js server: {e}")
+        return False
+
+def stop_nextjs_server():
+    """Stop Next.js server."""
+    global _nextjs_process
+    if _nextjs_process:
+        try:
+            _nextjs_process.terminate()
+            _nextjs_process.wait(timeout=5)
+            logger.info("✅ Next.js server stopped")
+        except Exception as e:
+            logger.error(f"❌ Error stopping Next.js server: {e}")
+            try:
+                _nextjs_process.kill()
+            except:
+                pass
+        _nextjs_process = None
+
 @app.get("/")
-async def serve_frontend_root():
-    """Backend API root - Redirect to frontend service."""
-    from fastapi.responses import RedirectResponse
+async def serve_frontend_root(request: Request):
+    """Proxy request to Next.js server."""
+    if not httpx:
+        return {"error": "httpx not installed"}
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(_nextjs_url, timeout=5.0)
+            headers = dict(response.headers)
+            # Remove hop-by-hop headers
+            headers.pop("transfer-encoding", None)
+            headers.pop("connection", None)
+            return StreamingResponse(
+                iter([response.content]),
+                status_code=response.status_code,
+                headers=headers
+            )
+    except Exception as e:
+        logger.error(f"❌ Error proxying to Next.js: {e}")
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Kortix - Frontend Loading...</title>
+            <meta http-equiv="refresh" content="3">
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; text-align: center; background: #0a0a0a; color: #f5f5f5; }
+            </style>
+        </head>
+        <body>
+            <h1>🚀 Kortix AI</h1>
+            <p>Frontend is starting... Please wait a moment.</p>
+        </body>
+        </html>
+        """
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=html_content)
 
-    # Get frontend URL from environment or use default
-    frontend_url = os.getenv("FRONTEND_URL", "https://kortix-frontend.onrender.com")
-
-    logger.debug(f"🔄 Redirecting root path to frontend: {frontend_url}")
-    return RedirectResponse(url=frontend_url, status_code=302)
-
-# Catch-all route for non-API paths - redirect to frontend
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    """Redirect non-API routes to frontend service."""
-    logger.debug(f"🌐 Non-API route called: '{full_path}'")
+# Catch-all route for non-API paths - proxy to Next.js
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def serve_frontend(full_path: str, request: Request):
+    """Proxy non-API routes to Next.js frontend."""
+    logger.debug(f"🌐 Frontend route called: '{full_path}'")
 
     # Don't interfere with API routes
     if full_path.startswith(("api", "docs", "redoc", "openapi.json", "test", "v1/")):
         logger.debug(f"🚫 API route detected: {full_path}")
         raise HTTPException(status_code=404, detail="API endpoint not found")
 
-    # Redirect to frontend service
-    frontend_url = os.getenv("FRONTEND_URL", "https://kortix-frontend.onrender.com")
-    from fastapi.responses import RedirectResponse
-    redirect_url = f"{frontend_url}/{full_path}" if full_path else frontend_url
-    logger.debug(f"🔄 Redirecting to frontend: {redirect_url}")
-    return RedirectResponse(url=redirect_url, status_code=307)
+    if not httpx:
+        return {"error": "httpx not installed"}
+
+    # Proxy to Next.js server
+    try:
+        async with httpx.AsyncClient() as client:
+            url = f"{_nextjs_url}/{full_path}"
+            # Forward the request method and body
+            method = request.method
+            body = await request.body() if method in ["POST", "PUT", "PATCH"] else None
+            
+            response = await client.request(
+                method,
+                url,
+                content=body,
+                headers=dict(request.headers),
+                timeout=10.0,
+                follow_redirects=True
+            )
+            headers = dict(response.headers)
+            headers.pop("transfer-encoding", None)
+            headers.pop("connection", None)
+            return StreamingResponse(
+                iter([response.content]),
+                status_code=response.status_code,
+                headers=headers
+            )
+    except Exception as e:
+        logger.error(f"❌ Error proxying to Next.js: {e}")
+        return await serve_frontend_root(request)
 
 
 if __name__ == "__main__":

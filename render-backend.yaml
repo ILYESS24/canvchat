@@ -1,13 +1,25 @@
 services:
-  # BACKEND - API FastAPI
+  # BACKEND - API FastAPI avec Frontend Next.js intégré
   - type: web
     name: kortix-backend
     env: python
-    rootDir: backend/
-    buildCommand: pip install -r ../requirements.txt
-    startCommand: python simple_api.py
+    rootDir: ./
+    buildCommand: |
+      echo "🔨 Installing Node.js dependencies for frontend..."
+      cd apps/frontend && npm install
+      echo "🔨 Building frontend Next.js..."
+      npm run build
+      echo "🔨 Installing backend Python dependencies..."
+      cd ../..
+      pip install -r requirements.txt
+      echo "✅ Build complete!"
+    startCommand: cd backend && python api.py
     envVars:
       - key: ENV_MODE
         value: production
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://kortix-backend.onrender.com/v1
+      - key: PORT
+        value: 8000
     healthCheckPath: /v1/health
     plan: starter
