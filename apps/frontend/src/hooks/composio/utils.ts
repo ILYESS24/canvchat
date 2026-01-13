@@ -207,7 +207,7 @@ export interface BulkDeleteProfilesResponse {
 export const composioApi = {
   async getCategories(): Promise<CompositoCategoriesResponse> {
     const result = await backendApi.get<CompositoCategoriesResponse>(
-      '/composio/categories',
+      '/api/composio/categories',
       {
         errorContext: { operation: 'load categories', resource: 'Composio categories' },
       }
@@ -222,21 +222,21 @@ export const composioApi = {
 
   async getToolkits(search?: string, category?: string, cursor?: string): Promise<ComposioToolkitsResponse> {
     const params = new URLSearchParams();
-    
+
     if (search) {
       params.append('search', search);
     }
-    
+
     if (category) {
       params.append('category', category);
     }
-    
+
     if (cursor) {
       params.append('cursor', cursor);
     }
-    
+
     const result = await backendApi.get<ComposioToolkitsResponse>(
-      `/composio/toolkits${params.toString() ? `?${params.toString()}` : ''}`,
+      `/api/composio/toolkits${params.toString() ? `?${params.toString()}` : ''}`,
       {
         errorContext: { operation: 'load toolkits', resource: 'Composio toolkits' },
       }
@@ -251,17 +251,17 @@ export const composioApi = {
 
   async getProfiles(params?: { toolkit_slug?: string; is_active?: boolean }): Promise<ComposioProfile[]> {
     const queryParams = new URLSearchParams();
-    
+
     if (params?.toolkit_slug) {
       queryParams.append('toolkit_slug', params.toolkit_slug);
     }
-    
+
     if (params?.is_active !== undefined) {
       queryParams.append('is_active', params.is_active.toString());
     }
-    
+
     const result = await backendApi.get<ComposioProfilesResponse>(
-      `/composio/profiles${queryParams.toString() ? `?${queryParams.toString()}` : ''}`,
+      `/api/composio/profiles${queryParams.toString() ? `?${queryParams.toString()}` : ''}`,
       {
         errorContext: { operation: 'load profiles', resource: 'Composio profiles' },
       }
@@ -276,7 +276,7 @@ export const composioApi = {
 
   async createProfile(request: CreateComposioProfileRequest): Promise<CreateComposioProfileResponse> {
     const result = await backendApi.post<CreateComposioProfileResponse>(
-      '/composio/profiles',
+      '/api/composio/profiles',
       request,
       {
         errorContext: { operation: 'create profile', resource: 'Composio profile' },

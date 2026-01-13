@@ -18,6 +18,9 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Suna AI Platform',
   description: 'Your Autonomous AI Platform',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
