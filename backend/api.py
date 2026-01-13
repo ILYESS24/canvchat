@@ -618,100 +618,125 @@ async def _memory_watchdog():
     except Exception as e:
         logger.error(f"Memory watchdog failed: {e}")
 
-# Frontend serving routes
+# Frontend serving routes - Backend API only, frontend is served separately
 @app.get("/")
 async def serve_frontend_root():
-    """Serve the frontend index page."""
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    print(f"🏠 ROOT ROUTE CALLED - Static dir: {static_dir}")
-    print(f"🏠 Directory exists: {os.path.exists(static_dir)}")
-
-    if os.path.exists(static_dir):
-        files = os.listdir(static_dir)
-        print(f"🏠 Files in static dir: {files[:10]}...")  # Show first 10 files
-        index_path = os.path.join(static_dir, "index.html")
-        print(f"🏠 Index path: {index_path}")
-        print(f"🏠 Index exists: {os.path.exists(index_path)}")
-
-        if os.path.exists(index_path):
-            print("✅ SERVING FRONTEND INDEX.HTML")
-            return FileResponse(index_path, media_type="text/html")
-        else:
-            print("❌ INDEX.HTML NOT FOUND")
-    else:
-        print("❌ STATIC DIRECTORY NOT FOUND")
-
-    # Fallback: return diagnostic info
+    """Backend API root - Frontend is served from a separate Next.js service."""
+    from fastapi.responses import HTMLResponse
+    
+    # Get frontend URL from environment or use default
+    frontend_url = os.getenv("FRONTEND_URL", "https://kortix-frontend.onrender.com")
+    
     html_content = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="fr">
     <head>
-        <title>Kortix - Diagnostic</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Kortix AI - Backend API</title>
         <style>
-            body {{ font-family: Arial, sans-serif; padding: 20px; background: #0a0a0a; color: #f5f5f5; }}
-            .error {{ color: #ff6b6b; }}
-            .info {{ color: #00d9b4; }}
-            .warning {{ color: #ffa500; }}
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+                color: #f5f5f5;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 600px;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 16px;
+                padding: 40px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+            h1 {{
+                font-size: 2rem;
+                margin-bottom: 20px;
+                background: linear-gradient(135deg, #00d9b4, #3b82f6);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }}
+            .message {{
+                font-size: 1.1rem;
+                color: #a0a0a0;
+                margin-bottom: 30px;
+                line-height: 1.6;
+            }}
+            .cta-button {{
+                display: inline-block;
+                background: linear-gradient(135deg, #00d9b4, #3b82f6);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-weight: 600;
+                margin: 10px;
+                transition: transform 0.2s;
+            }}
+            .cta-button:hover {{
+                transform: translateY(-2px);
+            }}
+            .api-links {{
+                margin-top: 30px;
+                padding-top: 30px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+            .api-links a {{
+                color: #00d9b4;
+                text-decoration: none;
+                margin: 0 15px;
+            }}
+            .api-links a:hover {{
+                text-decoration: underline;
+            }}
         </style>
     </head>
     <body>
-        <h1>🚀 Kortix AI Worker Backend</h1>
-        <p>Frontend diagnostic information:</p>
-
-        <div class="info">
-            <h3>✅ Backend Status</h3>
-            <p>API is running successfully</p>
-        </div>
-
-        <div class="warning">
-            <h3>⚠️ Frontend Status</h3>
-            <p><strong>Static directory:</strong> {static_dir}</p>
-            <p><strong>Directory exists:</strong> {os.path.exists(static_dir) if static_dir else False}</p>
-            <p><strong>Files in directory:</strong> {str(os.listdir(static_dir)[:5]) + "..." if os.path.exists(static_dir) and os.listdir(static_dir) else 'N/A'}</p>
-        </div>
-
-        <div class="info">
-            <h3>🔧 API Endpoints</h3>
-            <ul>
-                <li><a href="/docs">📚 API Documentation (/docs)</a></li>
-                <li><a href="/v1/health">🏥 Health Check (/v1/health)</a></li>
-                <li><a href="/api">ℹ️ API Info (/api)</a></li>
-            </ul>
+        <div class="container">
+            <h1>🚀 Kortix AI Backend API</h1>
+            <p class="message">
+                Ceci est le backend API. L'interface utilisateur est disponible sur le service frontend séparé.
+            </p>
+            <a href="{frontend_url}" class="cta-button">Accéder à l'interface →</a>
+            <div class="api-links">
+                <a href="/docs">📚 Documentation API</a>
+                <a href="/v1/health">🏥 Health Check</a>
+                <a href="/api">ℹ️ API Info</a>
+            </div>
         </div>
     </body>
     </html>
     """
-    from fastapi.responses import HTMLResponse
     return HTMLResponse(content=html_content)
 
-# SPA catch-all route - must be LAST route to serve frontend for non-API paths
+# Catch-all route for non-API paths - redirect to frontend
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str):
-    """Serve the frontend for all non-API routes (SPA support)."""
-    logger.debug(f"🌐 Frontend route called with path: '{full_path}'")
+    """Redirect non-API routes to frontend service."""
+    logger.debug(f"🌐 Non-API route called: '{full_path}'")
 
     # Don't interfere with API routes
     if full_path.startswith(("api", "docs", "redoc", "openapi.json", "test", "v1/")):
         logger.debug(f"🚫 API route detected: {full_path}")
         raise HTTPException(status_code=404, detail="API endpoint not found")
 
-    # Try to serve static file first
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    file_path = os.path.join(static_dir, full_path)
-
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        logger.debug(f"📄 Serving static file: {full_path}")
-        return FileResponse(file_path)
-
-    # For SPA routing - serve index.html for any non-API route
-    index_path = os.path.join(static_dir, "index.html")
-    logger.debug(f"🏠 Serving SPA route: {full_path} -> index.html (exists: {os.path.exists(index_path)})")
-
-    if os.path.exists(index_path):
-        return FileResponse(index_path, media_type="text/html")
-    else:
-        logger.warning(f"❌ Frontend file not found: {full_path}")
-        return {"error": "Frontend not available", "message": "Static files not found", "path": full_path}
+    # Redirect to frontend service
+    frontend_url = os.getenv("FRONTEND_URL", "https://kortix-frontend.onrender.com")
+    from fastapi.responses import RedirectResponse
+    redirect_url = f"{frontend_url}/{full_path}" if full_path else frontend_url
+    logger.debug(f"🔄 Redirecting to frontend: {redirect_url}")
+    return RedirectResponse(url=redirect_url, status_code=307)
 
 
 if __name__ == "__main__":
