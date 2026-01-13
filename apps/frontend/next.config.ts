@@ -10,6 +10,9 @@ const nextConfig = (): NextConfig => ({
   // Configuration for production deployment only
   ...(process.env.NODE_ENV === 'production' ? { output: 'standalone' } : {}),
 
+  // Enable src directory for app router
+  srcDir: './src',
+
   // Only disable checks in production builds
   ...(process.env.NODE_ENV === 'production' ? {
     eslint: {

@@ -1,7 +1,5 @@
-'use client';
-
 import { KortixInterface } from '@/components/aurion';
 
-export function LandingPage() {
+export default function Home() {
   return <KortixInterface />;
 }
