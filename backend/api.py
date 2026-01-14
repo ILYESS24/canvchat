@@ -642,51 +642,14 @@ _nextjs_process = None
 _nextjs_url = "http://localhost:3000"
 
 def start_nextjs_server():
-    """Start Next.js server as background process."""
-    global _nextjs_process
-    
-    # Find Next.js standalone build
-    possible_paths = [
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "apps", "frontend", ".next", "standalone"),
-        os.path.join(os.getcwd(), "apps", "frontend", ".next", "standalone"),
-        "/opt/render/project/src/apps/frontend/.next/standalone",
-    ]
-    
-    standalone_dir = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            standalone_dir = path
-            logger.info(f"✅ Found Next.js standalone build at: {path}")
-            break
-    
-    if not standalone_dir:
-        logger.warning("❌ Next.js standalone build not found - frontend will not be available")
-        return False
-    
-    # Start Next.js server
-    try:
-        server_script = os.path.join(standalone_dir, "apps", "frontend", "server.js")
-        if not os.path.exists(server_script):
-            logger.warning(f"❌ Next.js server.js not found at: {server_script}")
-            return False
-        
-        # Change to standalone directory and start server
-        env = os.environ.copy()
-        env["PORT"] = "3000"
-        env["NODE_ENV"] = "production"
-        
-        _nextjs_process = subprocess.Popen(
-            ["node", "server.js"],
-            cwd=os.path.join(standalone_dir, "apps", "frontend"),
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        logger.info(f"✅ Started Next.js server (PID: {_nextjs_process.pid})")
+    """Check for Next.js static build."""
+    # Check if static frontend exists
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    if os.path.exists(static_dir) and os.path.exists(os.path.join(static_dir, "index.html")):
+        logger.info(f"✅ Found Next.js static build at: {static_dir}")
         return True
-    except Exception as e:
-        logger.error(f"❌ Failed to start Next.js server: {e}")
+    else:
+        logger.warning("❌ Next.js static build not found - frontend will not be available")
         return False
 
 def stop_nextjs_server():
@@ -707,47 +670,37 @@ def stop_nextjs_server():
 
 @app.get("/")
 async def serve_frontend_root(request: Request):
-    """Proxy request to Next.js server."""
-    if not httpx:
-        return {"error": "httpx not installed"}
+    """Serve the static Next.js frontend index.html."""
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    index_path = os.path.join(static_dir, "index.html")
     
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(_nextjs_url, timeout=5.0)
-            headers = dict(response.headers)
-            # Remove hop-by-hop headers
-            headers.pop("transfer-encoding", None)
-            headers.pop("connection", None)
-            return StreamingResponse(
-                iter([response.content]),
-                status_code=response.status_code,
-                headers=headers
-            )
-    except Exception as e:
-        logger.error(f"❌ Error proxying to Next.js: {e}")
+    if os.path.exists(index_path):
+        from fastapi.responses import FileResponse
+        return FileResponse(index_path, media_type="text/html")
+    else:
+        logger.error("❌ Frontend index.html not found")
         html_content = """
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Kortix - Frontend Loading...</title>
-            <meta http-equiv="refresh" content="3">
+            <title>Kortix - Frontend Not Found</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 40px; text-align: center; background: #0a0a0a; color: #f5f5f5; }
             </style>
         </head>
         <body>
             <h1>🚀 Kortix AI</h1>
-            <p>Frontend is starting... Please wait a moment.</p>
+            <p>Frontend is not available. Please check the build configuration.</p>
         </body>
         </html>
         """
         from fastapi.responses import HTMLResponse
         return HTMLResponse(content=html_content)
 
-# Catch-all route for non-API paths - proxy to Next.js
+# Catch-all route for non-API paths - serve static files
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def serve_frontend(full_path: str, request: Request):
-    """Proxy non-API routes to Next.js frontend."""
+    """Serve static files from Next.js build."""
     logger.debug(f"🌐 Frontend route called: '{full_path}'")
 
     # Don't interfere with API routes
@@ -755,36 +708,23 @@ async def serve_frontend(full_path: str, request: Request):
         logger.debug(f"🚫 API route detected: {full_path}")
         raise HTTPException(status_code=404, detail="API endpoint not found")
 
-    if not httpx:
-        return {"error": "httpx not installed"}
-
-    # Proxy to Next.js server
-    try:
-        async with httpx.AsyncClient() as client:
-            url = f"{_nextjs_url}/{full_path}"
-            # Forward the request method and body
-            method = request.method
-            body = await request.body() if method in ["POST", "PUT", "PATCH"] else None
-            
-            response = await client.request(
-                method,
-                url,
-                content=body,
-                headers=dict(request.headers),
-                timeout=10.0,
-                follow_redirects=True
-            )
-            headers = dict(response.headers)
-            headers.pop("transfer-encoding", None)
-            headers.pop("connection", None)
-            return StreamingResponse(
-                iter([response.content]),
-                status_code=response.status_code,
-                headers=headers
-            )
-    except Exception as e:
-        logger.error(f"❌ Error proxying to Next.js: {e}")
-        return await serve_frontend_root(request)
+    # Serve static files
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    file_path = os.path.join(static_dir, full_path)
+    
+    # If the file exists, serve it
+    if os.path.isfile(file_path):
+        from fastapi.responses import FileResponse
+        return FileResponse(file_path)
+    
+    # For client-side routing, fallback to index.html for non-API routes
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        from fastapi.responses import FileResponse
+        return FileResponse(index_path, media_type="text/html")
+    
+    # If nothing found, return 404
+    raise HTTPException(status_code=404, detail="File not found")
 
 
 if __name__ == "__main__":

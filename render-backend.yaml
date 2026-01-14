@@ -9,6 +9,9 @@ services:
       cd apps/frontend && npm install
       echo "🔨 Building frontend Next.js..."
       npm run build
+      echo "🔨 Copying build to backend static folder..."
+      mkdir -p ../../backend/static
+      cp -r out/* ../../backend/static/ 2>/dev/null || cp -r .next/static ../../backend/static/_next/static 2>/dev/null || true
       echo "🔨 Installing backend Python dependencies..."
       cd ../..
       pip install -r requirements.txt
