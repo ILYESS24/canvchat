@@ -9,11 +9,14 @@ services:
       cd apps/frontend && npm install
       echo "🔨 Building frontend Next.js..."
       npm run build
-      echo "🔨 Copying build to backend static folder..."
-      mkdir -p ../../backend/static
-      cp -r out/* ../../backend/static/ 2>/dev/null || cp -r .next/static ../../backend/static/_next/static 2>/dev/null || true
-      echo "🔨 Installing backend Python dependencies..."
+      echo "🔨 Cleaning old static files..."
       cd ../..
+      rm -rf backend/static/*
+      echo "🔨 Copying new build to backend static folder..."
+      mkdir -p backend/static
+      cp -r apps/frontend/out/* backend/static/
+      ls -la backend/static/
+      echo "🔨 Installing backend Python dependencies..."
       pip install -r requirements.txt
       echo "✅ Build complete!"
     startCommand: cd backend && python api.py
