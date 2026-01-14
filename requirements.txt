@@ -30,7 +30,7 @@ prisma==0.15.0
 
 # AI and LLM - Fixed versions to avoid resolution conflicts
 litellm==1.80.11
-openai==1.99.5
+openai==2.8.1
 anthropic==0.69.0
 boto3==1.40.74
 
