@@ -470,6 +470,78 @@ api_router.include_router(test_harness_router)
 from core.files import staged_files_router
 api_router.include_router(staged_files_router, prefix="/files")
 
+# Smart Agent endpoints
+from fastapi.responses import StreamingResponse as FastAPIStreamingResponse
+import json as json_module
+
+@api_router.post("/smart-agent/chat", summary="Smart Agent Chat", tags=["agents"])
+async def smart_agent_chat(
+    request: Request,
+    message: str = Query(..., description="User message"),
+    session_id: str = Query("default", description="Session ID for conversation history")
+):
+    """
+    Process a message through the Smart Agent.
+    Automatically selects the best AI model for the task.
+    Returns a streaming response with analysis and content.
+    """
+    from core.agents.smart_agent import process_smart_message
+    
+    async def generate():
+        try:
+            async for chunk in process_smart_message(message, session_id):
+                yield f"data: {json_module.dumps(chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Smart agent error: {e}")
+            yield f"data: {json_module.dumps({'type': 'error', 'data': {'message': str(e)}})}\n\n"
+    
+    return FastAPIStreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+@api_router.get("/smart-agent/analyze", summary="Analyze Task", tags=["agents"])
+async def analyze_task(
+    message: str = Query(..., description="Message to analyze")
+):
+    """
+    Analyze a message to determine task type and optimal model.
+    Does not execute the task, just returns the analysis.
+    """
+    from core.agents.smart_agent import TaskAnalyzer
+    
+    analysis = TaskAnalyzer.analyze_query(message)
+    
+    return {
+        "success": True,
+        "analysis": {
+            "task_type": analysis["task_type_str"],
+            "confidence": analysis["confidence"],
+            "selected_model": analysis["selected_model"],
+            "model_name": analysis["model_info"].name if analysis["model_info"] else "Unknown",
+            "model_provider": analysis["model_info"].provider if analysis["model_info"] else "Unknown",
+            "reasoning": analysis["reasoning"],
+            "keywords_found": analysis["keywords_found"]
+        }
+    }
+
+@api_router.delete("/smart-agent/history", summary="Clear History", tags=["agents"])
+async def clear_agent_history(
+    session_id: str = Query("default", description="Session ID")
+):
+    """Clear conversation history for a session."""
+    from core.agents.smart_agent import get_agent
+    
+    agent = get_agent(session_id)
+    agent.clear_history()
+    
+    return {"success": True, "message": f"History cleared for session {session_id}"}
+
 from core.sandbox.canvas_ai_api import router as canvas_ai_router
 api_router.include_router(canvas_ai_router)
 
