@@ -5,17 +5,7 @@ services:
     env: python
     rootDir: ./
     buildCommand: |
-      echo "🔨 Installing Node.js dependencies for frontend..."
-      cd apps/frontend && npm install
-      echo "🔨 Building frontend Next.js..."
-      npm run build
-      echo "🔨 Cleaning old static files..."
-      cd ../..
-      rm -rf backend/static/*
-      echo "🔨 Copying new build to backend static folder..."
-      mkdir -p backend/static
-      cp -r apps/frontend/out/* backend/static/
-      ls -la backend/static/
+      echo "🔨 Frontend is a static HTML file - no build needed"
       echo "🔨 Installing backend Python dependencies..."
       pip install -r requirements.txt
       echo "✅ Build complete!"
