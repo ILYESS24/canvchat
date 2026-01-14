@@ -32,7 +32,7 @@ prisma==0.15.0
 litellm==1.80.11
 openai==2.8.1
 anthropic==0.69.0
-boto3==1.41.0
+boto3==1.40.74
 
 # Development and testing
 setuptools==75.3.0
@@ -115,10 +115,10 @@ google-auth-httplib2==0.2.0
 google-analytics-data==0.18.0
 
 # Cloud and infrastructure
-daytona-sdk==0.21.0
-daytona-api-client==0.21.0
-daytona-api-client-async==0.21.0
-daytona==0.21.0
+# daytona-sdk==0.21.0  # Removed: conflicts with boto3 via aiobotocore
+# daytona-api-client==0.21.0
+# daytona-api-client-async==0.21.0
+# daytona==0.21.0
 
 # Scheduling
 apscheduler==3.10.0
