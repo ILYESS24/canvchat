@@ -213,51 +213,94 @@ async def api_root():
 @app.get("/test")
 async def test_endpoint():
     """Simple test endpoint to verify API is working."""
-    return {"status": "ok", "message": "API is working!", "timestamp": "2025-01-09"}
+    from core.services.llm import LITELLM_AVAILABLE
+    return {
+        "status": "ok", 
+        "message": "🚀 Kortix AI API is running!",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "instance_id": instance_id,
+        "llm_status": "litellm" if LITELLM_AVAILABLE else "openrouter_fallback",
+        "env_mode": config.ENV_MODE.value if config.ENV_MODE else "unknown"
+    }
 
 @app.get("/v1/health")
-async def health_check():
+async def health_check_simple():
     """Health check endpoint for monitoring."""
     return {
         "status": "healthy",
-        "timestamp": "2025-01-09T22:00:00Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
-        "service": "Suna AI Platform Backend"
+        "service": "Kortix AI Platform Backend",
+        "instance_id": instance_id
     }
 
 @app.get("/v1/agents")
 async def get_agents():
-    """Get list of available AI agents."""
-    return {
-        "agents": [
-            {
-                "id": "data-analyst",
-                "name": "Data Analyst",
-                "description": "Analyzes data, creates reports, and provides insights",
-                "avatar": "🧠",
-                "status": "active",
-                "capabilities": ["data-analysis", "reporting", "insights"]
-            },
-            {
-                "id": "code-assistant",
-                "name": "Code Assistant",
-                "description": "Helps with programming, debugging, and development",
-                "avatar": "💻",
-                "status": "active",
-                "capabilities": ["coding", "debugging", "refactoring"]
-            },
-            {
-                "id": "content-writer",
-                "name": "Content Writer",
-                "description": "Creates content, blog posts, and marketing materials",
-                "avatar": "📝",
-                "status": "active",
-                "capabilities": ["writing", "content-creation", "marketing"]
-            }
-        ],
-        "total": 3,
-        "status": "success"
-    }
+    """Get list of available AI agents dynamically from database."""
+    try:
+        # Try to get agents from database
+        db_client = await db.client
+        result = await db_client.table("agents").select("*").execute()
+        
+        if result.data and len(result.data) > 0:
+            agents = []
+            for agent in result.data:
+                agents.append({
+                    "id": agent.get("id") or agent.get("agent_id"),
+                    "name": agent.get("name", "Unknown Agent"),
+                    "description": agent.get("description", "AI Agent"),
+                    "avatar": agent.get("avatar", "🤖"),
+                    "status": agent.get("status", "active"),
+                    "capabilities": agent.get("capabilities", [])
+                })
+            return {"agents": agents, "total": len(agents), "status": "success"}
+    except Exception as e:
+        logger.warning(f"Could not fetch agents from DB: {e}")
+    
+    # Fallback to default agents if DB fails or empty
+    default_agents = [
+        {
+            "id": "super-worker",
+            "name": "🚀 Super Worker",
+            "description": "Agent généraliste avancé capable de recherche, analyse, automatisation web et plus",
+            "avatar": "🚀",
+            "status": "active",
+            "capabilities": ["research", "analysis", "web-automation", "coding", "writing"]
+        },
+        {
+            "id": "data-analyst",
+            "name": "🧠 Data Analyst",
+            "description": "Analyse de données, création de rapports et insights",
+            "avatar": "🧠",
+            "status": "active",
+            "capabilities": ["data-analysis", "reporting", "insights", "visualization"]
+        },
+        {
+            "id": "code-assistant",
+            "name": "💻 Code Assistant",
+            "description": "Aide au développement, debugging et refactoring",
+            "avatar": "💻",
+            "status": "active",
+            "capabilities": ["coding", "debugging", "refactoring", "code-review"]
+        },
+        {
+            "id": "content-writer",
+            "name": "📝 Content Writer",
+            "description": "Création de contenu, articles de blog et marketing",
+            "avatar": "📝",
+            "status": "active",
+            "capabilities": ["writing", "content-creation", "marketing", "copywriting"]
+        },
+        {
+            "id": "research-agent",
+            "name": "🔍 Research Agent",
+            "description": "Recherche approfondie sur le web et analyse de sources",
+            "avatar": "🔍",
+            "status": "active",
+            "capabilities": ["web-search", "research", "fact-checking", "summarization"]
+        }
+    ]
+    return {"agents": default_agents, "total": len(default_agents), "status": "success"}
 
 # Configure OpenAPI docs with API Key and Bearer token auth
 configure_openapi(app)
@@ -485,8 +528,13 @@ async def metrics_endpoint(
 
 @api_router.get("/debug", summary="Debug Information", operation_id="debug", tags=["system"])
 async def debug_endpoint(
-    type: str = Query("streams", description="Debug type: 'streams' (queue) or 'worker'")
+    type: str = Query("streams", description="Debug type: 'streams' (queue) or 'worker'"),
+    admin_key: str = Query(None, description="Admin API key for authentication")
 ):
+    # Security: Require admin key in production
+    expected_key = os.environ.get("ADMIN_API_KEY", "kortix-admin-debug-2024")
+    if config.ENV_MODE == EnvMode.PRODUCTION and admin_key != expected_key:
+        raise HTTPException(status_code=403, detail="Admin authentication required")
     """
     Get detailed debug information for troubleshooting.
     
@@ -551,6 +599,41 @@ async def debug_endpoint(
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
+@api_router.get("/cache/stats", summary="Cache Statistics", operation_id="cache_stats", tags=["system"])
+async def cache_stats_endpoint():
+    """Get statistics for all LRU caches."""
+    try:
+        from core.cache.lru_cache import get_all_cache_stats
+        return {
+            "status": "ok",
+            "caches": get_all_cache_stats(),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@api_router.post("/cache/clear", summary="Clear All Caches", operation_id="cache_clear", tags=["system"])
+async def cache_clear_endpoint(
+    admin_key: str = Query(None, description="Admin API key")
+):
+    """Clear all caches (requires admin key in production)."""
+    expected_key = os.environ.get("ADMIN_API_KEY", "kortix-admin-debug-2024")
+    if config.ENV_MODE == EnvMode.PRODUCTION and admin_key != expected_key:
+        raise HTTPException(status_code=403, detail="Admin authentication required")
+    
+    try:
+        from core.cache.lru_cache import clear_all_caches
+        result = clear_all_caches()
+        return {
+            "status": "ok",
+            "cleared": result,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/health-docker", summary="Docker Health Check", operation_id="health_check_docker", tags=["system"])
 async def health_check_docker():
     logger.debug("Health docker check endpoint called")
@@ -576,13 +659,17 @@ app.include_router(api_router, prefix="/v1")
 
 
 async def _memory_watchdog():
-    """Monitor worker memory usage and log warnings when thresholds are exceeded.
-    
-    Memory thresholds (for 7.5GB limit):
-    - Critical (>6.5GB / 87%): Immediate action needed, risk of OOM kill
-    - Warning (>6GB / 80%): High memory usage, consider cleanup
-    - Info (>5GB / 67%): Elevated memory usage
     """
+    Enhanced Memory Watchdog with automatic cache cleanup.
+    
+    Memory thresholds (for 7.5GB limit / Render Starter):
+    - Critical (>6.5GB / 87%): Emergency cleanup + GC
+    - Warning (>6GB / 80%): Clear caches + GC
+    - Info (>5GB / 67%): Log status
+    - Normal (<5GB): Periodic status every 5 minutes
+    """
+    last_info_log = 0
+    
     try:
         while True:
             try:
@@ -594,34 +681,80 @@ async def _memory_watchdog():
                 # Critical threshold: >6.5GB (87% of 7.5GB limit) - risk of OOM kill
                 if mem_mb > 6500:
                     logger.error(
-                        f"🚨 CRITICAL: Worker memory very high: {mem_mb:.0f}MB ({mem_percent:.1f}%) "
-                        f"(instance: {instance_id}) - Risk of OOM kill!"
+                        f"🚨 CRITICAL: Memory {mem_mb:.0f}MB ({mem_percent:.1f}%) "
+                        f"[instance: {instance_id}] - Emergency cleanup!"
                     )
-                    # Try to force garbage collection when memory is critical
+                    
+                    # Emergency cleanup sequence
                     try:
+                        # 1. Clear all LRU caches
+                        from core.cache.lru_cache import clear_all_caches
+                        cache_result = clear_all_caches()
+                        logger.info(f"   ↳ Cleared {cache_result['total_cleared']} cache entries")
+                        
+                        # 2. Force garbage collection (multiple generations)
                         import gc
-                        collected = gc.collect()
-                        if collected > 0:
-                            logger.info(f"Emergency GC collected {collected} objects")
-                    except Exception:
-                        pass
+                        gc.collect(0)
+                        gc.collect(1)
+                        collected = gc.collect(2)
+                        logger.info(f"   ↳ GC collected {collected} objects")
+                        
+                        # 3. Check memory after cleanup
+                        mem_after = process.memory_info().rss / 1024 / 1024
+                        freed = mem_mb - mem_after
+                        logger.info(f"   ↳ Memory freed: {freed:.0f}MB (now: {mem_after:.0f}MB)")
+                        
+                    except Exception as cleanup_error:
+                        logger.error(f"   ↳ Cleanup error: {cleanup_error}")
+                
                 # Warning threshold: >6GB (80% of 7.5GB limit)
                 elif mem_mb > 6000:
                     logger.warning(
-                        f"⚠️ Worker memory high: {mem_mb:.0f}MB ({mem_percent:.1f}%) "
-                        f"(instance: {instance_id}) - Approaching limit"
+                        f"⚠️ HIGH MEMORY: {mem_mb:.0f}MB ({mem_percent:.1f}%) "
+                        f"[instance: {instance_id}] - Clearing caches"
                     )
+                    
+                    try:
+                        # Clear LRU caches
+                        from core.cache.lru_cache import clear_all_caches, get_all_cache_stats
+                        stats_before = get_all_cache_stats()
+                        clear_result = clear_all_caches()
+                        
+                        # Force GC
+                        import gc
+                        gc.collect()
+                        
+                        logger.info(f"   ↳ Cleared {clear_result['total_cleared']} entries")
+                    except Exception as e:
+                        logger.debug(f"   ↳ Cache cleanup: {e}")
+                
                 # Info threshold: >5GB (67% of 7.5GB limit)
                 elif mem_mb > 5000:
                     logger.info(
-                        f"Worker memory: {mem_mb:.0f}MB ({mem_percent:.1f}%) "
-                        f"(instance: {instance_id})"
+                        f"📊 Memory: {mem_mb:.0f}MB ({mem_percent:.1f}%) "
+                        f"[instance: {instance_id}]"
                     )
                 
+                # Normal operation - log every 5 minutes
+                else:
+                    current_time = time.time()
+                    if current_time - last_info_log > 300:  # 5 minutes
+                        try:
+                            from core.cache.lru_cache import get_all_cache_stats
+                            cache_stats = get_all_cache_stats()
+                            total_cached = sum(s['size'] for s in cache_stats.values())
+                            logger.debug(
+                                f"💚 Memory OK: {mem_mb:.0f}MB ({mem_percent:.1f}%) | "
+                                f"Cache: {total_cached} items [instance: {instance_id}]"
+                            )
+                        except:
+                            logger.debug(f"💚 Memory OK: {mem_mb:.0f}MB ({mem_percent:.1f}%)")
+                        last_info_log = current_time
+                
             except Exception as e:
-                logger.debug(f"Memory watchdog error: {e}")
+                logger.debug(f"Memory watchdog iteration error: {e}")
             
-            await asyncio.sleep(60)  # Check every minute
+            await asyncio.sleep(30)  # Check every 30 seconds
     except asyncio.CancelledError:
         logger.debug("Memory watchdog cancelled")
     except Exception as e:
@@ -733,17 +866,24 @@ if __name__ == "__main__":
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     
+    # Get port from environment (Render sets this)
+    port = int(os.environ.get("PORT", 8000))
+    
     # Enable reload mode for local and staging environments
     is_dev_env = config.ENV_MODE in [EnvMode.LOCAL, EnvMode.STAGING]
     workers = 1 if is_dev_env else 4
-    reload = is_dev_env
+    reload_enabled = is_dev_env
     
-    logger.debug(f"Starting server on 0.0.0.0:8000 with {workers} workers (reload={reload})")
+    logger.info(f"🚀 Starting Kortix AI Backend on 0.0.0.0:{port}")
+    logger.info(f"   Mode: {config.ENV_MODE.value if config.ENV_MODE else 'unknown'}")
+    logger.info(f"   Workers: {workers}, Reload: {reload_enabled}")
+    logger.info(f"   Instance ID: {instance_id}")
+    
     uvicorn.run(
         "api:app", 
         host="0.0.0.0", 
-        port=8000,
+        port=port,
         workers=workers,
         loop="asyncio",
-        reload=False if is_dev_env else False
+        reload=reload_enabled
     )

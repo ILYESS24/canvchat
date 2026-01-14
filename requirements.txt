@@ -1,40 +1,69 @@
-# Core web framework
+# =============================================================================
+# KORTIX AI - PRODUCTION REQUIREMENTS
+# =============================================================================
+# Optimized for Render deployment - all versions pinned for stability
+# Last updated: 2026-01-15
+# =============================================================================
+
+# =============================================================================
+# CORE WEB FRAMEWORK
+# =============================================================================
 fastapi==0.115.12
 uvicorn==0.27.1
 python-multipart==0.0.20
+gunicorn==23.0.0
 
-# Configuration and environment
+# =============================================================================
+# CONFIGURATION & ENVIRONMENT
+# =============================================================================
 python-dotenv==1.0.1
 click==8.1.7
 questionary==2.0.1
 packaging==24.1
 
-# Data validation
+# =============================================================================
+# DATA VALIDATION
+# =============================================================================
 pydantic==2.11.7
+typing-extensions==4.15.0
 
-# HTTP and async
+# =============================================================================
+# HTTP & ASYNC
+# =============================================================================
 requests==2.32.3
 aiohttp==3.12.0
 httpx==0.28.1
 
-# Authentication and security
+# =============================================================================
+# AUTHENTICATION & SECURITY
+# =============================================================================
 pyjwt==2.10.1
 cryptography==43.0.0
 certifi==2025.4.26
+fastapi-sso==0.9.0
 
-# Database and caching
+# =============================================================================
+# DATABASE & CACHING
+# =============================================================================
 redis==5.2.1
 upstash-redis==1.3.0
 supabase==2.17.0
 prisma==0.15.0
 
-# AI and LLM - Fixed versions to avoid resolution conflicts
+# =============================================================================
+# AI & LLM PROVIDERS
+# =============================================================================
+# LiteLLM for multi-provider support (OpenRouter fallback if unavailable)
 litellm==1.80.11
 openai==2.8.1
 anthropic==0.69.0
+
+# AWS for additional AI services
 boto3==1.40.74
 
-# Development and testing
+# =============================================================================
+# TESTING & DEVELOPMENT
+# =============================================================================
 setuptools==75.3.0
 pytest==8.3.4
 pytest-asyncio==0.24.0
@@ -46,8 +75,11 @@ pytest-timeout==2.3.1
 pytest-randomly==3.12.0
 pytest-rerunfailures==10.2.0
 asyncio==3.4.3
+nest-asyncio==1.6.0
 
-# Data processing and visualization
+# =============================================================================
+# DATA PROCESSING & VISUALIZATION
+# =============================================================================
 altair==4.2.2
 Pillow==10.4.0
 PyPDF2==3.0.1
@@ -56,91 +88,106 @@ openpyxl==3.1.2
 python-pptx==1.0.0
 chardet==5.2.0
 beautifulsoup4==4.12.0
+
+# PDF & Document Generation
 reportlab==4.0.0
 svglib==1.5.1
+weasyprint==63.0
+cssutils==2.9.0
 
-# Image and media processing
+# =============================================================================
+# IMAGE & MEDIA PROCESSING
+# =============================================================================
 pytesseract==0.3.13
-# vtracer>=0.6.0  # Removed: requires Rust compilation, not available on Render
 
-# Email and validation
+# =============================================================================
+# EMAIL & VALIDATION
+# =============================================================================
 email-validator==2.0.0
 mailtrap==2.0.1
 
-# Monitoring and logging
+# =============================================================================
+# MONITORING & LOGGING
+# =============================================================================
 structlog==25.4.0
 prometheus-client==0.21.1
 langfuse==2.60.5
+psutil==5.9.0
 
-# Serialization
+# =============================================================================
+# SERIALIZATION
+# =============================================================================
 PyYAML==6.0.1
 orjson==3.11.1
 
-# MCP and tool execution
+# =============================================================================
+# MCP & TOOL EXECUTION
+# =============================================================================
 mcp==1.9.4
 e2b-code-interpreter==1.2.0
 python-ripgrep==0.0.6
 composio==0.8.0
 tavily-python==0.5.4
 replicate==0.25.0
+
+# =============================================================================
+# AI EVALUATION & DATASETS
+# =============================================================================
 braintrust==0.3.15
 autoevals==0.0.130
 huggingface-hub==0.34.4
 datasets==4.4.2
+
+# =============================================================================
+# SPECIALIZED TOOLS
+# =============================================================================
 chunkr-ai==0.3.7
 freestyle==0.0.17
-
-# Development tools
-nest-asyncio==1.6.0
 vncdotool==1.2.0
+realitydefender==0.1.10
 
-# Payment and billing
+# =============================================================================
+# PAYMENT & BILLING
+# =============================================================================
 stripe==11.6.0
 
-# Phone numbers
+# =============================================================================
+# PHONE NUMBERS
+# =============================================================================
 phonenumbers==8.13.50
 
-# PDF and document processing
-weasyprint==63.0
-cssutils==2.9.0
-
-# Authentication
-fastapi-sso==0.9.0
-
-# Google services
+# =============================================================================
+# GOOGLE SERVICES
+# =============================================================================
 google-api-python-client==2.120.0
 google-auth==2.28.0
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.2.0
 google-analytics-data==0.18.0
 
-# Cloud and infrastructure
-# daytona-sdk==0.21.0  # Removed: conflicts with boto3 via aiobotocore
-# daytona-api-client==0.21.0
-# daytona-api-client-async==0.21.0
-# daytona==0.21.0
-
-# Scheduling
+# =============================================================================
+# SCHEDULING
+# =============================================================================
 apscheduler==3.10.0
 croniter==1.4.0
 
-# Server
-gunicorn==23.0.0
-
-# Typing
-typing-extensions==4.15.0
-
-# Notifications
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
 novu-py==3.11.0
 
-# System monitoring
-psutil==5.9.0
-
-# Content moderation
-realitydefender==0.1.10
-
-# Web scraping and automation
+# =============================================================================
+# WEB SCRAPING & AUTOMATION
+# =============================================================================
 apify-client==2.3.0
 
-# SSH and remote access
+# =============================================================================
+# SSH & REMOTE ACCESS
+# =============================================================================
 paramiko==3.4.0
+
+# =============================================================================
+# EXCLUDED PACKAGES (Commented out due to dependency conflicts)
+# =============================================================================
+# daytona-sdk - Conflicts with boto3 via aiobotocore version requirements
+# vtracer - Requires Rust compilation, not available on Render

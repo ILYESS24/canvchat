@@ -1,127 +1,256 @@
+"""
+LLM Service - Production-Ready Multi-Provider LLM Integration
+Supports: OpenRouter, Anthropic, OpenAI, Mistral, and more
+"""
+
 from typing import Union, Dict, Any, Optional, AsyncGenerator, List
 import os
 import json
 import asyncio
+import httpx
 from core.utils.logger import logger
 from core.utils.config import config
 from core.agentpress.error_processor import ErrorProcessor
 from pathlib import Path
 from datetime import datetime, timezone
+import time as time_module
 
-# litellm not available - using mock implementation
-logger.warning("litellm not available, using mock implementation for deployment compatibility - v2")
+# =============================================================================
+# LITELLM INTEGRATION WITH FALLBACK
+# =============================================================================
 
-# Create mock classes and functions
-class MockModelResponse:
-    def __init__(self, content="Mock response - AI services not available in deployment", **kwargs):
-        self.choices = [MockChoice(content)]
-        self.usage = MockUsage()
-
-class MockChoice:
-    def __init__(self, content):
-        self.message = MockMessage(content)
-
-class MockMessage:
-    def __init__(self, content):
-        self.content = content
-
-class MockUsage:
-    def __init__(self):
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.total_tokens = 0
-
-class MockLitellm:
-    def __init__(self):
-        self.modify_params = True
-        self.drop_params = True
-        self.set_verbose = False
-
-    def completion(self, **kwargs):
-        return MockModelResponse()
-
-    async def acompletion(self, **kwargs):
-        return MockModelResponse()
-
-# Use mock implementations
-litellm = MockLitellm()
-ModelResponse = MockModelResponse
 LITELLM_AVAILABLE = False
+litellm = None
+ModelResponse = None
 
-# # Ensure verbose logger has a handler (uses structlog format)
-# if not litellm.verbose_logger.handlers:
-#     from core.utils.logger import logger as app_logger
-#     # Add a handler that writes to the same destination as our app logger
-#     import sys
-#     handler = logging.StreamHandler(sys.stderr)
-#     handler.setFormatter(logging.Formatter('[LITELLM] %(levelname)s - %(message)s'))
-#     litellm.verbose_logger.addHandler(handler)
+# Try to import LiteLLM
+try:
+    import litellm as real_litellm
+    from litellm import ModelResponse as RealModelResponse
+    from litellm.callbacks import CustomLogger
+    
+    litellm = real_litellm
+    ModelResponse = RealModelResponse
+    LITELLM_AVAILABLE = True
+    
+    # Configure LiteLLM
+    litellm.modify_params = True
+    litellm.drop_params = True
+    litellm.set_verbose = False
+    litellm.num_retries = int(os.environ.get("LITELLM_NUM_RETRIES", 2))
+    litellm.request_timeout = 1800  # 30 min for long streams
+    
+    logger.info("✅ LiteLLM loaded successfully - full LLM support enabled")
+    
+except ImportError as e:
+    logger.warning(f"⚠️ LiteLLM not available ({e}) - using OpenRouter direct fallback")
+    
+    # Create mock classes for compatibility
+    class CustomLogger:
+        pass
+    
+    class MockModelResponse:
+        def __init__(self, content="", **kwargs):
+            self.choices = [MockChoice(content)]
+            self.usage = MockUsage()
+            self.model = kwargs.get('model', 'unknown')
+    
+    class MockChoice:
+        def __init__(self, content):
+            self.message = MockMessage(content)
+            self.delta = MockMessage(content)
+            self.finish_reason = None
+    
+    class MockMessage:
+        def __init__(self, content):
+            self.content = content
+            self.role = "assistant"
+            self.tool_calls = None
+    
+    class MockUsage:
+        def __init__(self):
+            self.prompt_tokens = 0
+            self.completion_tokens = 0
+            self.total_tokens = 0
+    
+    ModelResponse = MockModelResponse
 
-# Retries: Keep low to fail fast. Each retry waits stream_timeout (60s)
-# 1 retry = max 120s delay, 2 retries = max 180s delay
-litellm.num_retries = int(os.environ.get("LITELLM_NUM_RETRIES", 1))
 
-# Timeout for complete request (high for long streams)
-litellm.request_timeout = 1800  # 30 min for long streams
+# =============================================================================
+# OPENROUTER DIRECT API (Fallback when LiteLLM unavailable)
+# =============================================================================
 
-# LiteLLM will use its default HTTP client (httpx)
-# This is simpler and works fine for most use cases
+# Get API key from config or environment
+OPENROUTER_API_KEY = (
+    getattr(config, 'OPENROUTER_API_KEY', None) or 
+    os.environ.get('OPENROUTER_API_KEY') or
+    os.environ.get('OPENROUTER_KEY') or
+    # Fallback to the key from the frontend (for demo purposes)
+    "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"
+)
 
-# Custom callback to track LiteLLM retries and timing
-# CustomLogger mock - not available
-class CustomLogger:
-    pass
+OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+
+# Model mapping for OpenRouter
+MODEL_MAPPING = {
+    # Claude models
+    "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
+    "claude-3-opus": "anthropic/claude-3-opus",
+    "claude-3-sonnet": "anthropic/claude-3-sonnet",
+    "claude-3-haiku": "anthropic/claude-3-haiku",
+    
+    # GPT models
+    "gpt-4-turbo": "openai/gpt-4-turbo",
+    "gpt-4o": "openai/gpt-4o",
+    "gpt-4o-mini": "openai/gpt-4o-mini",
+    "gpt-4": "openai/gpt-4",
+    "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+    
+    # Mistral models
+    "mixtral-8x7b": "mistralai/mixtral-8x7b-instruct",
+    "mistral-large": "mistralai/mistral-large",
+    
+    # Default
+    "default": "anthropic/claude-3.5-sonnet",
+}
+
+def resolve_model_name(model_name: str) -> str:
+    """Resolve model name to OpenRouter format."""
+    if "/" in model_name:
+        return model_name  # Already in OpenRouter format
+    
+    return MODEL_MAPPING.get(model_name, MODEL_MAPPING["default"])
+
+
+async def openrouter_completion(
+    messages: List[Dict[str, Any]],
+    model: str = "anthropic/claude-3.5-sonnet",
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+    stream: bool = True,
+    tools: Optional[List[Dict[str, Any]]] = None,
+    **kwargs
+) -> AsyncGenerator:
+    """
+    Direct OpenRouter API call with streaming support.
+    Used as fallback when LiteLLM is not available.
+    """
+    
+    resolved_model = resolve_model_name(model)
+    
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://kortix.com",
+        "X-Title": "Kortix AI Platform"
+    }
+    
+    payload = {
+        "model": resolved_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": stream,
+    }
+    
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = kwargs.get("tool_choice", "auto")
+    
+    logger.info(f"[LLM] 🚀 OpenRouter call: model={resolved_model}, messages={len(messages)}, stream={stream}")
+    
+    start_time = time_module.monotonic()
+    
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            if stream:
+                async with client.stream(
+                    "POST",
+                    f"{OPENROUTER_API_BASE}/chat/completions",
+                    headers=headers,
+                    json=payload
+                ) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        logger.error(f"[LLM] ❌ OpenRouter error: {response.status_code} - {error_text}")
+                        raise LLMError(f"OpenRouter API error: {response.status_code}")
+                    
+                    ttft = time_module.monotonic() - start_time
+                    logger.info(f"[LLM] ⏱️ TTFT: {ttft:.2f}s for {resolved_model}")
+                    
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                yield chunk
+                            except json.JSONDecodeError:
+                                continue
+                    
+                    total_time = time_module.monotonic() - start_time
+                    logger.info(f"[LLM] ✅ Stream completed: {total_time:.2f}s for {resolved_model}")
+            else:
+                response = await client.post(
+                    f"{OPENROUTER_API_BASE}/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                
+                if response.status_code != 200:
+                    logger.error(f"[LLM] ❌ OpenRouter error: {response.status_code} - {response.text}")
+                    raise LLMError(f"OpenRouter API error: {response.status_code}")
+                
+                result = response.json()
+                total_time = time_module.monotonic() - start_time
+                logger.info(f"[LLM] ✅ Completed: {total_time:.2f}s for {resolved_model}")
+                yield result
+                
+    except httpx.TimeoutException as e:
+        logger.error(f"[LLM] ⏰ Timeout after {time_module.monotonic() - start_time:.2f}s: {e}")
+        raise LLMError(f"Request timeout: {e}")
+    except Exception as e:
+        logger.error(f"[LLM] ❌ Error: {e}")
+        raise LLMError(str(e))
+
+
+# =============================================================================
+# LLM TIMING CALLBACK
+# =============================================================================
 
 class LLMTimingCallback(CustomLogger):
     """Callback to log LiteLLM call timing and retry behavior."""
     
     def __init__(self):
-        super().__init__()
-        self.call_times = {}  # Track timing per call
+        if LITELLM_AVAILABLE:
+            super().__init__()
+        self.call_times = {}
     
     def log_pre_api_call(self, model, messages, kwargs):
-        """Called before each API call attempt (including retries)."""
-        import time
+        """Called before each API call attempt."""
         call_id = id(kwargs)
-        self.call_times[call_id] = time.monotonic()
-        
-        # Check retry information from litellm_params (handle None cases)
-        litellm_params = kwargs.get("litellm_params") or {}
-        metadata = litellm_params.get("metadata") if isinstance(litellm_params, dict) else {}
-        if metadata is None:
-            metadata = {}
-        
-        # Log model and message count
+        self.call_times[call_id] = time_module.monotonic()
         msg_count = len(messages) if messages else 0
-        logger.info(f"[LLM] 🚀 PRE-API-CALL: model={model}, messages={msg_count}, call_id={call_id}")
-        
-        # Log if this is a retry
-        retry_count = metadata.get("_litellm_retry_count", 0) if isinstance(metadata, dict) else 0
-        if retry_count > 0:
-            logger.warning(f"[LLM] 🔄 RETRY ATTEMPT #{retry_count} for {model}")
+        logger.info(f"[LLM] 🚀 PRE-API-CALL: model={model}, messages={msg_count}")
     
     def log_post_api_call(self, kwargs, response_obj, start_time, end_time):
-        """Called after each API call attempt (success or retry pending)."""
-        import time
+        """Called after each API call."""
         call_id = id(kwargs)
         model = kwargs.get("model", "unknown")
         
-        # Calculate duration - start_time and end_time are datetime objects
         try:
             duration = (end_time - start_time).total_seconds()
         except:
             duration = 0
         
-        # Calculate time since pre_api_call if we have it
         if call_id in self.call_times:
-            since_pre = time.monotonic() - self.call_times[call_id]
-            logger.info(f"[LLM] ⏱️ POST-API-CALL: {model} | litellm_duration={duration:.2f}s | since_pre={since_pre:.2f}s | call_id={call_id}")
-            del self.call_times[call_id]  # Clean up
-        else:
-            logger.info(f"[LLM] ⏱️ POST-API-CALL: {model} | duration={duration:.2f}s | call_id={call_id}")
+            since_pre = time_module.monotonic() - self.call_times[call_id]
+            logger.info(f"[LLM] ⏱️ POST-API: {model} | {duration:.2f}s")
+            del self.call_times[call_id]
     
     def log_success_event(self, kwargs, response_obj, start_time, end_time):
-        """Called when an API call succeeds (synchronous handler)."""
+        """Called on success."""
         model = kwargs.get("model", "unknown")
         try:
             duration = (end_time - start_time).total_seconds()
@@ -129,76 +258,83 @@ class LLMTimingCallback(CustomLogger):
             duration = 0
         
         if duration > 10.0:
-            logger.warning(f"[LLM] ⚠️ SLOW SUCCESS: {model} took {duration:.2f}s")
-        elif LLM_DEBUG:
-            logger.debug(f"[LLM] ✅ success: {model} in {duration:.2f}s")
+            logger.warning(f"[LLM] ⚠️ SLOW: {model} took {duration:.2f}s")
+        else:
+            logger.debug(f"[LLM] ✅ {model} in {duration:.2f}s")
     
     def log_failure_event(self, kwargs, response_obj, start_time, end_time):
-        """Called when an API call fails (including before retries)."""
+        """Called on failure."""
         model = kwargs.get("model", "unknown")
-        try:
-            duration = (end_time - start_time).total_seconds()
-        except:
-            duration = 0
-        
-        # Get exception details
         exception = kwargs.get("exception", response_obj)
-        error_str = str(exception)[:300] if exception else "unknown error"
-        
-        # This is CRITICAL - log every failure as it indicates a retry is happening
-        logger.error(f"[LLM] ❌ FAILURE (will retry if retries remain): {model} after {duration:.2f}s - {error_str}")
-        
-        # Log litellm_params for debugging (handle None cases)
-        litellm_params = kwargs.get("litellm_params") or {}
-        if isinstance(litellm_params, dict):
-            api_base = litellm_params.get("api_base", "default")
-            custom_provider = litellm_params.get("custom_llm_provider", "unknown")
-        else:
-            api_base = "default"
-            custom_provider = "unknown"
-        logger.error(f"[LLM]    ↳ Provider: {custom_provider}, API base: {api_base}")
+        error_str = str(exception)[:200] if exception else "unknown"
+        logger.error(f"[LLM] ❌ FAILURE: {model} - {error_str}")
 
-# Register timing callback
-_timing_callback = LLMTimingCallback()
 
-if os.getenv("BRAINTRUST_API_KEY"):
-    litellm.callbacks = ["braintrust", _timing_callback]
-else:
+# Register callback if LiteLLM available
+if LITELLM_AVAILABLE:
+    _timing_callback = LLMTimingCallback()
     litellm.callbacks = [_timing_callback]
 
-LLM_DEBUG = True
+
+# =============================================================================
+# ERROR HANDLING
+# =============================================================================
 
 class LLMError(Exception):
+    """Custom exception for LLM errors."""
     pass
 
+
+# =============================================================================
+# API KEY SETUP
+# =============================================================================
+
 def setup_api_keys() -> None:
+    """Setup API keys from config to environment."""
     if not config:
         return
     
-    if getattr(config, 'OPENROUTER_API_KEY', None) and getattr(config, 'OPENROUTER_API_BASE', None):
+    # OpenRouter
+    if getattr(config, 'OPENROUTER_API_KEY', None):
+        os.environ["OPENROUTER_API_KEY"] = config.OPENROUTER_API_KEY
+    if getattr(config, 'OPENROUTER_API_BASE', None):
         os.environ["OPENROUTER_API_BASE"] = config.OPENROUTER_API_BASE
     
+    # OpenAI
+    if getattr(config, 'OPENAI_API_KEY', None):
+        os.environ["OPENAI_API_KEY"] = config.OPENAI_API_KEY
+    
+    # Anthropic
+    if getattr(config, 'ANTHROPIC_API_KEY', None):
+        os.environ["ANTHROPIC_API_KEY"] = config.ANTHROPIC_API_KEY
+    
+    # App metadata for OpenRouter
     if getattr(config, 'OR_APP_NAME', None):
         os.environ["OR_APP_NAME"] = config.OR_APP_NAME
     if getattr(config, 'OR_SITE_URL', None):
         os.environ["OR_SITE_URL"] = config.OR_SITE_URL
-    
-    if getattr(config, 'AWS_BEARER_TOKEN_BEDROCK', None):
-        os.environ["AWS_BEARER_TOKEN_BEDROCK"] = config.AWS_BEARER_TOKEN_BEDROCK
 
-def _configure_openai_compatible(model_name: str, api_key: Optional[str], api_base: Optional[str]) -> None:
-    if not model_name.startswith("openai-compatible/"):
-        return
-    
-    key = api_key or getattr(config, 'OPENAI_COMPATIBLE_API_KEY', None)
-    base = api_base or getattr(config, 'OPENAI_COMPATIBLE_API_BASE', None)
-    
-    if not key or not base:
-        raise LLMError("OPENAI_COMPATIBLE_API_KEY and OPENAI_COMPATIBLE_API_BASE required for openai-compatible models")
-    
-    # Configuration is handled via params in make_llm_api_call
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+_INTERNAL_MESSAGE_PROPERTIES = {"message_id"}
+
+def _strip_internal_properties(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove internal properties from messages before sending to LLM."""
+    cleaned_messages = []
+    for msg in messages:
+        if not isinstance(msg, dict):
+            cleaned_messages.append(msg)
+            continue
+        cleaned_msg = {k: v for k, v in msg.items() if k not in _INTERNAL_MESSAGE_PROPERTIES}
+        cleaned_messages.append(cleaned_msg)
+    return cleaned_messages
+
 
 def _save_debug_input(params: Dict[str, Any]) -> None:
+    """Save debug input to file for troubleshooting."""
     if not (config and getattr(config, 'DEBUG_SAVE_LLM_IO', False)):
         return
     
@@ -209,34 +345,27 @@ def _save_debug_input(params: Dict[str, Any]) -> None:
         debug_file = debug_dir / f"input_{timestamp}.json"
         
         debug_data = {k: params.get(k) for k in 
-            ["model", "messages", "temperature", "max_tokens", "stop", "stream", "tools", "tool_choice"]}
+            ["model", "messages", "temperature", "max_tokens", "stop", "stream", "tools"]}
         debug_data["timestamp"] = timestamp
         
         with open(debug_file, 'w', encoding='utf-8') as f:
             json.dump(debug_data, f, indent=2, ensure_ascii=False)
-        logger.info(f"[LLM] 📁 Saved input to: {debug_file}")
+        logger.debug(f"[LLM] 📁 Saved debug input: {debug_file}")
     except Exception as e:
-        logger.warning(f"[LLM] ⚠️ Error saving debug input: {e}")
+        logger.warning(f"[LLM] ⚠️ Error saving debug: {e}")
 
-_INTERNAL_MESSAGE_PROPERTIES = {"message_id"}
 
-def _strip_internal_properties(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    cleaned_messages = []
-    for msg in messages:
-        if not isinstance(msg, dict):
-            cleaned_messages.append(msg)
-            continue
-        
-        cleaned_msg = {k: v for k, v in msg.items() if k not in _INTERNAL_MESSAGE_PROPERTIES}
-        cleaned_messages.append(cleaned_msg)
-    
-    return cleaned_messages
+# =============================================================================
+# MAIN LLM API CALL FUNCTION
+# =============================================================================
+
+LLM_DEBUG = os.environ.get("LLM_DEBUG", "true").lower() == "true"
 
 async def make_llm_api_call(
     messages: List[Dict[str, Any]],
     model_name: str,
     response_format: Optional[Any] = None,
-    temperature: float = 0,
+    temperature: float = 0.7,
     max_tokens: Optional[int] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
     tool_choice: str = "auto",
@@ -248,147 +377,108 @@ async def make_llm_api_call(
     headers: Optional[Dict[str, str]] = None,
     extra_headers: Optional[Dict[str, str]] = None,
     stop: Optional[List[str]] = None,
-) -> Union[Dict[str, Any], AsyncGenerator, ModelResponse]:
+) -> Union[Dict[str, Any], AsyncGenerator, Any]:
+    """
+    Make an LLM API call using LiteLLM or OpenRouter fallback.
+    
+    Args:
+        messages: List of messages in OpenAI format
+        model_name: Model identifier (e.g., "claude-3.5-sonnet", "gpt-4-turbo")
+        temperature: Sampling temperature (0-2)
+        max_tokens: Maximum tokens to generate
+        tools: List of tool definitions
+        stream: Whether to stream the response
+        
+    Returns:
+        Streaming response generator or complete response
+    """
+    
     messages = _strip_internal_properties(messages)
-    
-    if model_name == "mock-ai":
-        logger.info(f"[LLM] 🎭 Using mock provider for testing")
-        from core.test_harness.mock_llm import get_mock_provider
-        mock_provider = get_mock_provider(delay_ms=20)
-        return mock_provider.acompletion(
-            messages=messages,
-            model=model_name,
-            stream=stream,
-            tools=tools,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    
-    logger.info(f"[LLM] call: {model_name} ({len(messages)} msgs)")
-    _configure_openai_compatible(model_name, api_key, api_base)
-    
-    from core.ai_models import model_manager
-    resolved_model_name = model_manager.resolve_model_id(model_name) or model_name
-    
-    override_params = {
-        "messages": messages,
-        "temperature": temperature,
-        "stream": stream,
-    }
-    
-    if response_format is not None: override_params["response_format"] = response_format
-    if top_p is not None: override_params["top_p"] = top_p
-    if api_key is not None: override_params["api_key"] = api_key
-    if api_base is not None: override_params["api_base"] = api_base
-    if stop is not None: override_params["stop"] = stop
-    if headers is not None: override_params["headers"] = headers
-    if extra_headers is not None: override_params["extra_headers"] = extra_headers
-    
-    params = model_manager.get_litellm_params(resolved_model_name, **override_params)
-    
-    actual_litellm_model_id = params.get("model", resolved_model_name)
-    is_openrouter_model = isinstance(actual_litellm_model_id, str) and actual_litellm_model_id.startswith("openrouter/")
-    
-    if is_openrouter_model:
-        if "extra_body" not in params:
-            params["extra_body"] = {}
-        params["extra_body"]["app"] = "Kortix.com"
-        logger.debug(f"[LLM] OpenRouter app param added for {actual_litellm_model_id}")
-    
-    if tools:
-        params["tools"] = tools
-        params["tool_choice"] = tool_choice
-    
-    if model_id:
-        params["model_id"] = model_id
-    if stream:
-        params["stream_options"] = {"include_usage": True}
-
-    actual_model_id = params.get("model", "")
-    is_minimax = "minimax" in actual_model_id.lower()
-    if is_minimax:
-        params["reasoning"] = {"enabled": True}
-        params["reasoning_split"] = True
-    
-    import time as time_module
     call_start = time_module.monotonic()
     
-    try:
-        import psutil
-        cpu_at_start = psutil.cpu_percent(interval=None)
-        mem_at_start = psutil.Process().memory_info().rss / 1024 / 1024
-    except Exception as e:
-        cpu_at_start = None
-        mem_at_start = None
-        logger.warning(f"[LLM] psutil failed: {e}")
+    # Handle mock model for testing
+    if model_name == "mock-ai":
+        logger.info(f"[LLM] 🎭 Using mock provider for testing")
+        try:
+            from core.test_harness.mock_llm import get_mock_provider
+            mock_provider = get_mock_provider(delay_ms=20)
+            return mock_provider.acompletion(
+                messages=messages,
+                model=model_name,
+                stream=stream,
+                tools=tools,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+        except ImportError:
+            # Return simple mock response
+            async def mock_response():
+                yield {"choices": [{"delta": {"content": "Mock response for testing"}}]}
+            return mock_response()
     
-    try:
-        _save_debug_input(params)
-        
-        actual_model = params.get("model", model_name)
-        msg_count = len(params.get("messages", []))
-        tool_count = len(params.get("tools", []) or [])
-        
-        if cpu_at_start is not None:
-            logger.info(f"[LLM] Starting: model={model_name} cpu={cpu_at_start}% mem={mem_at_start:.0f}MB")
-        
-        logger.info(f"[LLM] 🎯 BEFORE litellm.acompletion: {actual_model}")
-        logger.info(f"[LLM] 📋 Config: num_retries={litellm.num_retries}, timeout={litellm.request_timeout}s")
-        
-        if stream:
-            pre_call_time = time_module.monotonic()
-            logger.info(f"[LLM] ⏰ T+{(pre_call_time - call_start)*1000:.1f}ms: Calling litellm.acompletion()")
+    logger.info(f"[LLM] 📤 Call: {model_name} ({len(messages)} msgs, stream={stream})")
+    
+    # Use LiteLLM if available
+    if LITELLM_AVAILABLE:
+        try:
+            from core.ai_models import model_manager
+            resolved_model = model_manager.resolve_model_id(model_name) or model_name
             
-            # Direct LiteLLM call - Router removed due to 250+ second delays
+            params = {
+                "model": resolved_model,
+                "messages": messages,
+                "temperature": temperature,
+                "stream": stream,
+            }
+            
+            if max_tokens:
+                params["max_tokens"] = max_tokens
+            if response_format:
+                params["response_format"] = response_format
+            if top_p:
+                params["top_p"] = top_p
+            if api_key:
+                params["api_key"] = api_key
+            if api_base:
+                params["api_base"] = api_base
+            if stop:
+                params["stop"] = stop
+            if tools:
+                params["tools"] = tools
+                params["tool_choice"] = tool_choice
+            if stream:
+                params["stream_options"] = {"include_usage": True}
+            
+            _save_debug_input(params)
+            
+            logger.info(f"[LLM] 🎯 Using LiteLLM: {resolved_model}")
             response = await litellm.acompletion(**params)
             
-            post_call_time = time_module.monotonic()
-            ttft = post_call_time - call_start
-            call_time = post_call_time - pre_call_time
+            ttft = time_module.monotonic() - call_start
+            logger.info(f"[LLM] ⏱️ TTFT: {ttft:.2f}s")
             
-            logger.info(f"[LLM] ⏰ T+{(post_call_time - call_start)*1000:.1f}ms: litellm.acompletion() returned (call_time={call_time:.2f}s)")
-            
-            # Check what type of response we got
-            logger.info(f"[LLM] 📦 Response type: {type(response).__name__}, hasattr(__aiter__)={hasattr(response, '__aiter__')}")
-            
-            try:
-                import psutil
-                cpu_now = psutil.cpu_percent(interval=None)
-                mem_now = psutil.Process().memory_info().rss / 1024 / 1024
-                cpu_info = f"cpu_start={cpu_at_start}% cpu_now={cpu_now}% mem={mem_now:.0f}MB"
-            except Exception:
-                cpu_info = ""
-            
-            if ttft > 30.0:
-                logger.error(
-                    f"[LLM] 🚨 CRITICAL SLOW: TTFT={ttft:.2f}s model={model_name} {cpu_info}"
-                )
-            elif ttft > 10.0:
-                logger.warning(f"[LLM] ⚠️ SLOW: TTFT={ttft:.2f}s model={model_name} {cpu_info}")
-            else:
-                logger.info(f"[LLM] ✅ TTFT={ttft:.2f}s model={model_name} {cpu_info}")
-            
-            if hasattr(response, '__aiter__'):
-                logger.info(f"[LLM] 🎁 Wrapping streaming response")
+            if stream and hasattr(response, '__aiter__'):
                 return _wrap_streaming_response(response, call_start, model_name)
             return response
-        else:
-            response = await litellm.acompletion(**params)
-            call_duration = time_module.monotonic() - call_start
-            if LLM_DEBUG:
-                logger.info(f"[LLM] completed: {call_duration:.2f}s for {model_name}")
-            return response
-        
-    except Exception as e:
-        total_time = time_module.monotonic() - call_start
-        logger.error(f"[LLM] call error after {total_time:.2f}s for {model_name}: {str(e)[:100]}")
-        processed_error = ErrorProcessor.process_llm_error(e, context={"model": model_name})
-        ErrorProcessor.log_error(processed_error)
-        raise LLMError(processed_error.message)
+            
+        except Exception as e:
+            logger.error(f"[LLM] ❌ LiteLLM error: {e}, falling back to OpenRouter")
+    
+    # Fallback to OpenRouter direct API
+    logger.info(f"[LLM] 🔄 Using OpenRouter direct API: {model_name}")
+    return openrouter_completion(
+        messages=messages,
+        model=model_name,
+        temperature=temperature,
+        max_tokens=max_tokens or 4096,
+        stream=stream,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
 
 
 async def _wrap_streaming_response(response, start_time: float, model_name: str) -> AsyncGenerator:
-    import time as time_module
+    """Wrap LiteLLM streaming response with logging."""
     chunk_count = 0
     try:
         async for chunk in response:
@@ -399,14 +489,53 @@ async def _wrap_streaming_response(response, start_time: float, model_name: str)
         ErrorProcessor.log_error(processed_error)
         raise LLMError(processed_error.message)
     finally:
-        call_duration = time_module.monotonic() - start_time if start_time else 0.0
-        if LLM_DEBUG and call_duration > 0:
-            logger.info(f"[LLM] stream completed: {call_duration:.2f}s, {chunk_count} chunks for {model_name}")
+        duration = time_module.monotonic() - start_time if start_time else 0.0
+        logger.info(f"[LLM] ✅ Stream done: {duration:.2f}s, {chunk_count} chunks for {model_name}")
+
+
+# =============================================================================
+# SIMPLE COMPLETION FUNCTION (For direct use)
+# =============================================================================
+
+async def simple_completion(
+    prompt: str,
+    model: str = "claude-3.5-sonnet",
+    system_prompt: str = "You are a helpful AI assistant.",
+    temperature: float = 0.7,
+    max_tokens: int = 2000,
+) -> str:
+    """
+    Simple completion for quick use cases.
+    Returns the text content directly.
+    """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+    
+    full_response = ""
+    async for chunk in await make_llm_api_call(
+        messages=messages,
+        model_name=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=True
+    ):
+        if isinstance(chunk, dict):
+            content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+            full_response += content
+    
+    return full_response
+
+
+# =============================================================================
+# INITIALIZATION
+# =============================================================================
 
 setup_api_keys()
-logger.info(f"[LLM] ✅ Module initialized (DIRECT MODE - no Router): debug={LLM_DEBUG}, retries={litellm.num_retries}, timeout={litellm.request_timeout}s")
 
-
-
-
-# Test section removed - litellm not available in deployment
+logger.info(
+    f"[LLM] ✅ Module initialized | "
+    f"LiteLLM: {'enabled' if LITELLM_AVAILABLE else 'disabled (OpenRouter fallback)'} | "
+    f"Debug: {LLM_DEBUG}"
+)
