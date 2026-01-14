@@ -60,7 +60,7 @@ export default function LandingPage() {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer YOUR_OPENROUTER_API_KEY", // REMPLACE ICI
+          "Authorization": "Bearer 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",
           "Content-Type": "application/json",
           "HTTP-Referer": window.location.origin,
           "X-Title": "AI Interface"
