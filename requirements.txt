@@ -10,7 +10,7 @@ questionary==2.0.1
 packaging==24.1
 
 # Data validation
-pydantic==2.11.2
+pydantic==2.11.7
 
 # HTTP and async
 requests==2.32.3
