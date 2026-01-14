@@ -115,10 +115,10 @@ google-auth-httplib2==0.2.0
 google-analytics-data==0.18.0
 
 # Cloud and infrastructure
-daytona-sdk==0.21.6
-daytona-api-client==0.21.6
-daytona-api-client-async==0.21.6
-daytona==0.21.6
+daytona-sdk==0.21.0
+daytona-api-client==0.21.0
+daytona-api-client-async==0.21.0
+daytona==0.21.0
 
 # Scheduling
 apscheduler==3.10.0
