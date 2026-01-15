@@ -436,10 +436,15 @@
         
         // Envoyer un message
         function sendMessage() {
+            console.log('📤 sendMessage() appelée');
             const input = document.getElementById('messageInput');
             let message = input.value.trim();
+            console.log('📝 Message saisi:', message);
             
-            if (!message) return;
+            if (!message) {
+                console.log('⚠️ Message vide, annulation');
+                return;
+            }
             
             // Ajouter le prompt de la bulle si active
             if (activePrompt) {
@@ -523,8 +528,10 @@
         
         // Appeler le backend FastAPI (qui gère OpenRouter)
         async function callOpenRouter(userMessage) {
+            console.log('🚀 Envoi du message:', userMessage);
             isGenerating = true;
             currentModel = selectBestModel(userMessage);
+            console.log('📊 Modèle sélectionné:', currentModel);
             
             // Afficher le loader minimal
             const chatMessages = document.getElementById('chatMessages');
@@ -536,6 +543,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
             try {
+                console.log('🌐 Appel API vers /v1/chat/completions...');
                 // Appel au backend FastAPI local
                 const response = await fetch('/v1/chat/completions', {
                     method: 'POST',
@@ -554,6 +562,14 @@
                     })
                 });
                 
+                console.log('✅ Réponse reçue:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erreur HTTP:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
                 // Supprimer le loader
                 document.getElementById('loader')?.remove();
                 
@@ -565,6 +581,7 @@
                 `;
                 chatMessages.appendChild(assistantDiv);
                 
+                console.log('📥 Lecture du stream...');
                 // Lire le stream
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -587,28 +604,37 @@
                                     document.getElementById('streamContent').innerHTML = formatContent(fullContent);
                                     chatMessages.scrollTop = chatMessages.scrollHeight;
                                 }
-                            } catch (e) {}
+                            } catch (e) {
+                                console.warn('⚠️ Parse error:', e);
+                            }
                         }
                     }
                 }
                 
+                console.log('✅ Stream terminé, contenu:', fullContent.substring(0, 100) + '...');
                 messages.push({ role: 'assistant', content: fullContent });
                 
             } catch (error) {
+                console.error('💥 ERREUR COMPLÈTE:', error);
                 document.getElementById('loader')?.remove();
                 let errorMsg = '❌ Erreur: ' + error.message;
                 
                 // Specific error messages
-                if (error.message.includes('402')) {
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMsg = '🔌 Erreur de connexion : Le backend FastAPI n\'est pas démarré !\n\nPour démarrer le backend :\n1. Ouvre un terminal dans le dossier du projet\n2. Lance : cd backend && python api.py\n3. Attends que le serveur démarre sur http://localhost:8000\n4. Recharge cette page';
+                } else if (error.message.includes('402')) {
                     errorMsg = '💳 Erreur de paiement : Plus de crédit sur ton compte OpenRouter. Recharge ton compte sur https://openrouter.ai/credits';
                 } else if (error.message.includes('401')) {
                     errorMsg = '🔑 Erreur d\'authentification : Clé API OpenRouter invalide ou expirée.';
                 } else if (error.message.includes('429')) {
                     errorMsg = '⏱️ Trop de requêtes : Attends quelques instants avant de réessayer.';
+                } else if (error.message.includes('404')) {
+                    errorMsg = '❓ Endpoint non trouvé : L\'endpoint /v1/chat/completions n\'existe pas sur le backend.';
                 } else if (error.message.includes('500')) {
                     errorMsg = '⚙️ Erreur serveur : Problème avec le backend. Réessaye dans un instant.';
                 }
                 
+                console.error('🚨 Message d\'erreur affiché:', errorMsg);
                 addMessage('assistant', errorMsg);
             }
             
