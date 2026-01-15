@@ -398,9 +398,8 @@
         let isGenerating = false;
         let currentModel = { name: 'Claude 3.5 Sonnet', emoji: '🤖' };
         
-        const OPENROUTER_API_KEY = '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';
-        const OR_SITE_URL = window.location.origin || 'https://kortix.com';
-        const OR_APP_NAME = 'Kortix AI';
+        // Note: API key is now configured in backend/.env (not in frontend for security)
+        // The frontend calls the backend API at /v1/chat/completions
         
         // Sélection du meilleur modèle selon la tâche
         function selectBestModel(query) {
