@@ -93,7 +93,37 @@
         const { useState, useRef, useEffect } = React;
 
         // ========================================
-        // TASK BUBBLES CONFIGURATION
+        // ALL AVAILABLE MODELS (Most Powerful)
+        // ========================================
+        const AI_MODELS = {
+            // 🏆 TIER 1: Most Powerful Models
+            "claude-opus": { id: "anthropic/claude-3-opus", name: "Claude 3 Opus", emoji: "🧠", tier: "ultimate", desc: "Most intelligent, complex reasoning" },
+            "claude-sonnet": { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "⚡", tier: "flagship", desc: "Best balance speed/intelligence" },
+            "gpt4o": { id: "openai/gpt-4o", name: "GPT-4o", emoji: "🌟", tier: "flagship", desc: "OpenAI's latest & fastest" },
+            "gpt4-turbo": { id: "openai/gpt-4-turbo", name: "GPT-4 Turbo", emoji: "🚀", tier: "flagship", desc: "128K context, vision capable" },
+            "gemini-pro": { id: "google/gemini-pro-1.5", name: "Gemini Pro 1.5", emoji: "💎", tier: "flagship", desc: "1M tokens context!" },
+            
+            // 🥇 TIER 2: Specialized Powerhouses
+            "deepseek-coder": { id: "deepseek/deepseek-coder", name: "DeepSeek Coder", emoji: "👨‍💻", tier: "specialized", desc: "Best for code generation" },
+            "llama-405b": { id: "meta-llama/llama-3.1-405b-instruct", name: "Llama 3.1 405B", emoji: "🦙", tier: "flagship", desc: "Largest open model" },
+            "mistral-large": { id: "mistralai/mistral-large", name: "Mistral Large", emoji: "🌪️", tier: "flagship", desc: "European powerhouse" },
+            "qwen-72b": { id: "qwen/qwen-2-72b-instruct", name: "Qwen 2 72B", emoji: "🐉", tier: "flagship", desc: "Alibaba's best" },
+            "command-r-plus": { id: "cohere/command-r-plus", name: "Command R+", emoji: "🎯", tier: "flagship", desc: "Great for RAG & search" },
+            
+            // 🥈 TIER 3: Fast & Efficient
+            "gpt4o-mini": { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", emoji: "⚡", tier: "fast", desc: "Fast & cheap" },
+            "claude-haiku": { id: "anthropic/claude-3-haiku", name: "Claude 3 Haiku", emoji: "🎋", tier: "fast", desc: "Ultra fast responses" },
+            "mixtral": { id: "mistralai/mixtral-8x7b-instruct", name: "Mixtral 8x7B", emoji: "🌀", tier: "fast", desc: "Fast & capable" },
+            "gemini-flash": { id: "google/gemini-flash-1.5", name: "Gemini Flash", emoji: "💨", tier: "fast", desc: "Super fast" },
+            "llama-70b": { id: "meta-llama/llama-3.1-70b-instruct", name: "Llama 3.1 70B", emoji: "🦙", tier: "fast", desc: "Fast open model" },
+            
+            // 🆓 TIER 4: Free Models
+            "llama-8b": { id: "meta-llama/llama-3.1-8b-instruct", name: "Llama 3.1 8B", emoji: "🦙", tier: "free", desc: "Free & decent" },
+            "gemma-7b": { id: "google/gemma-7b-it", name: "Gemma 7B", emoji: "💎", tier: "free", desc: "Google's free model" },
+        };
+
+        // ========================================
+        // TASK BUBBLES CONFIGURATION (Enhanced)
         // ========================================
         const TASK_BUBBLES = [
             {
@@ -103,7 +133,7 @@
                 description: "Créer une présentation",
                 prompt: "Crée une présentation professionnelle de 5 slides sur : ",
                 placeholder: "le sujet de ta présentation",
-                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                model: AI_MODELS["gpt4-turbo"],
                 color: "from-orange-500/20 to-amber-500/20",
                 border: "border-orange-500/30"
             },
@@ -114,7 +144,7 @@
                 description: "Écrire du code",
                 prompt: "Écris du code propre et commenté pour : ",
                 placeholder: "ce que tu veux coder",
-                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                model: AI_MODELS["deepseek-coder"],
                 color: "from-blue-500/20 to-cyan-500/20",
                 border: "border-blue-500/30"
             },
@@ -125,7 +155,7 @@
                 description: "Analyser des données",
                 prompt: "Fais une analyse détaillée de : ",
                 placeholder: "ce que tu veux analyser",
-                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                model: AI_MODELS["claude-sonnet"],
                 color: "from-green-500/20 to-emerald-500/20",
                 border: "border-green-500/30"
             },
@@ -136,7 +166,7 @@
                 description: "Écrire un texte",
                 prompt: "Rédige un texte professionnel sur : ",
                 placeholder: "le sujet de ton texte",
-                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                model: AI_MODELS["gpt4o"],
                 color: "from-purple-500/20 to-violet-500/20",
                 border: "border-purple-500/30"
             },
@@ -147,7 +177,7 @@
                 description: "Brainstorm & idées",
                 prompt: "Génère des idées créatives et originales pour : ",
                 placeholder: "ton projet créatif",
-                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                model: AI_MODELS["claude-opus"],
                 color: "from-pink-500/20 to-rose-500/20",
                 border: "border-pink-500/30"
             },
@@ -158,7 +188,7 @@
                 description: "Traduire un texte",
                 prompt: "Traduis le texte suivant en plusieurs langues (anglais, espagnol, allemand) : ",
                 placeholder: "le texte à traduire",
-                model: { name: "GPT-4o Mini", id: "openai/gpt-4o-mini" },
+                model: AI_MODELS["gpt4o-mini"],
                 color: "from-teal-500/20 to-cyan-500/20",
                 border: "border-teal-500/30"
             },
@@ -169,7 +199,7 @@
                 description: "Résumer un contenu",
                 prompt: "Fais un résumé clair et structuré de : ",
                 placeholder: "ce que tu veux résumer",
-                model: { name: "GPT-4o Mini", id: "openai/gpt-4o-mini" },
+                model: AI_MODELS["gemini-flash"],
                 color: "from-indigo-500/20 to-blue-500/20",
                 border: "border-indigo-500/30"
             },
@@ -180,38 +210,118 @@
                 description: "Calculs & équations",
                 prompt: "Résous ce problème mathématique étape par étape : ",
                 placeholder: "ton problème mathématique",
-                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                model: AI_MODELS["claude-sonnet"],
                 color: "from-yellow-500/20 to-orange-500/20",
                 border: "border-yellow-500/30"
+            },
+            {
+                id: "research",
+                emoji: "🔍",
+                label: "Recherche",
+                description: "Recherche approfondie",
+                prompt: "Fais une recherche approfondie et détaillée sur : ",
+                placeholder: "le sujet à rechercher",
+                model: AI_MODELS["gemini-pro"],
+                color: "from-sky-500/20 to-blue-500/20",
+                border: "border-sky-500/30"
+            },
+            {
+                id: "expert",
+                emoji: "🧠",
+                label: "Expert",
+                description: "Raisonnement complexe",
+                prompt: "En tant qu'expert, analyse en profondeur et donne ton avis sur : ",
+                placeholder: "ta question complexe",
+                model: AI_MODELS["claude-opus"],
+                color: "from-violet-500/20 to-purple-500/20",
+                border: "border-violet-500/30"
+            },
+            {
+                id: "debug",
+                emoji: "🐛",
+                label: "Debug",
+                description: "Corriger du code",
+                prompt: "Analyse et corrige les bugs dans ce code : ",
+                placeholder: "colle ton code ici",
+                model: AI_MODELS["deepseek-coder"],
+                color: "from-red-500/20 to-orange-500/20",
+                border: "border-red-500/30"
+            },
+            {
+                id: "explain",
+                emoji: "📚",
+                label: "Expliquer",
+                description: "Expliquer simplement",
+                prompt: "Explique-moi simplement comme si j'avais 10 ans : ",
+                placeholder: "ce que tu veux comprendre",
+                model: AI_MODELS["gpt4o"],
+                color: "from-amber-500/20 to-yellow-500/20",
+                border: "border-amber-500/30"
             }
         ];
 
-        // OpenRouter model selection based on query type
+        // ========================================
+        // INTELLIGENT MODEL SELECTION
+        // ========================================
         const selectBestModel = (query) => {
             const q = query.toLowerCase();
             
-            if (q.includes("presentation") || q.includes("slide") || q.includes("ppt") || q.includes("diapo")) {
-                return { model: "openai/gpt-4-turbo", name: "GPT-4 Turbo", emoji: "📊" };
+            // 📊 Presentations - GPT-4 Turbo (creative + structured)
+            if (q.includes("presentation") || q.includes("slide") || q.includes("ppt") || q.includes("diapo") || q.includes("powerpoint")) {
+                return { model: AI_MODELS["gpt4-turbo"].id, name: AI_MODELS["gpt4-turbo"].name, emoji: "📊" };
             }
-            if (q.includes("code") || q.includes("programming") || q.includes("debug") || q.includes("function") || q.includes("python") || q.includes("javascript")) {
-                return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "💻" };
+            
+            // 💻 Coding - DeepSeek Coder (specialized)
+            if (q.includes("code") || q.includes("programming") || q.includes("debug") || q.includes("function") || q.includes("python") || q.includes("javascript") || q.includes("bug") || q.includes("script") || q.includes("api")) {
+                return { model: AI_MODELS["deepseek-coder"].id, name: AI_MODELS["deepseek-coder"].name, emoji: "💻" };
             }
-            if (q.includes("write") || q.includes("story") || q.includes("creative") || q.includes("écris") || q.includes("rédige")) {
-                return { model: "openai/gpt-4-turbo", name: "GPT-4 Turbo", emoji: "✍️" };
+            
+            // 🧠 Complex reasoning - Claude 3 Opus (most intelligent)
+            if (q.includes("explain") || q.includes("why") || q.includes("complex") || q.includes("philosophy") || q.includes("reason") || q.includes("logic") || q.includes("analyse en profondeur")) {
+                return { model: AI_MODELS["claude-opus"].id, name: AI_MODELS["claude-opus"].name, emoji: "🧠" };
             }
-            if (q.includes("math") || q.includes("calculate") || q.includes("analyze") || q.includes("analyse") || q.includes("calcul")) {
-                return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "🔢" };
+            
+            // ✍️ Writing - GPT-4o (natural language)
+            if (q.includes("write") || q.includes("story") || q.includes("creative") || q.includes("écris") || q.includes("rédige") || q.includes("article") || q.includes("blog")) {
+                return { model: AI_MODELS["gpt4o"].id, name: AI_MODELS["gpt4o"].name, emoji: "✍️" };
             }
-            if (q.includes("translate") || q.includes("traduis") || q.includes("traduction")) {
-                return { model: "openai/gpt-4o-mini", name: "GPT-4o Mini", emoji: "🌐" };
+            // 🔢 Math - Claude 3.5 Sonnet (precise calculations)
+            if (q.includes("math") || q.includes("calculate") || q.includes("equation") || q.includes("calcul") || q.includes("formule") || q.includes("algèbre")) {
+                return { model: AI_MODELS["claude-sonnet"].id, name: AI_MODELS["claude-sonnet"].name, emoji: "🔢" };
             }
-            if (q.includes("summarize") || q.includes("résume") || q.includes("summary")) {
-                return { model: "openai/gpt-4o-mini", name: "GPT-4o Mini", emoji: "📝" };
+            
+            // 📈 Analysis - Claude 3.5 Sonnet (structured analysis)
+            if (q.includes("analyze") || q.includes("analyse") || q.includes("data") || q.includes("statistics") || q.includes("rapport") || q.includes("insight")) {
+                return { model: AI_MODELS["claude-sonnet"].id, name: AI_MODELS["claude-sonnet"].name, emoji: "📈" };
             }
+            
+            // 🔍 Research - Gemini Pro 1.5 (1M context)
+            if (q.includes("research") || q.includes("recherche") || q.includes("find") || q.includes("discover") || q.includes("explore") || q.includes("investigate")) {
+                return { model: AI_MODELS["gemini-pro"].id, name: AI_MODELS["gemini-pro"].name, emoji: "🔍" };
+            }
+            
+            // 🌐 Translation - GPT-4o Mini (fast & accurate)
+            if (q.includes("translate") || q.includes("traduis") || q.includes("traduction") || q.includes("language") || q.includes("french") || q.includes("english") || q.includes("spanish")) {
+                return { model: AI_MODELS["gpt4o-mini"].id, name: AI_MODELS["gpt4o-mini"].name, emoji: "🌐" };
+            }
+            
+            // 📝 Summary - Gemini Flash (fast processing)
+            if (q.includes("summarize") || q.includes("résume") || q.includes("summary") || q.includes("tldr") || q.includes("synthèse")) {
+                return { model: AI_MODELS["gemini-flash"].id, name: AI_MODELS["gemini-flash"].name, emoji: "📝" };
+            }
+            
+            // 🦙 Long documents - Gemini Pro (1M context) or Llama 405B
+            if (q.length > 2000) {
+                return { model: AI_MODELS["gemini-pro"].id, name: AI_MODELS["gemini-pro"].name, emoji: "💎" };
+            }
+            
+            // ⚡ Short/simple queries - Fast models
             if (q.length < 50) {
-                return { model: "mistralai/mixtral-8x7b-instruct", name: "Mixtral 8x7B", emoji: "⚡" };
+                return { model: AI_MODELS["claude-haiku"].id, name: AI_MODELS["claude-haiku"].name, emoji: "⚡" };
             }
-            return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "🤖" };
+            
+            // 🌟 Default - GPT-4o (best all-around)
+            return { model: AI_MODELS["gpt4o"].id, name: AI_MODELS["gpt4o"].name, emoji: "🌟" };
         };
 
         function LandingPage() {
@@ -399,7 +509,7 @@ Format chaque slide ainsi:
                     id: activeTaskBubble.model.id,
                     model: activeTaskBubble.model.id,
                     name: activeTaskBubble.model.name,
-                    emoji: activeTaskBubble.emoji
+                    emoji: activeTaskBubble.model.emoji || activeTaskBubble.emoji
                 } : null;
 
                 const response = await callOpenRouter(userMessage, forceModel);
