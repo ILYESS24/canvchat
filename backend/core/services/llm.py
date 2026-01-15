@@ -44,35 +44,35 @@ try:
     
 except ImportError as e:
     logger.warning(f"⚠️ LiteLLM not available ({e}) - using OpenRouter direct fallback")
-    
+
     # Create mock classes for compatibility
     class CustomLogger:
         pass
     
-    class MockModelResponse:
+class MockModelResponse:
         def __init__(self, content="", **kwargs):
-            self.choices = [MockChoice(content)]
-            self.usage = MockUsage()
+        self.choices = [MockChoice(content)]
+        self.usage = MockUsage()
             self.model = kwargs.get('model', 'unknown')
-    
-    class MockChoice:
-        def __init__(self, content):
-            self.message = MockMessage(content)
+
+class MockChoice:
+    def __init__(self, content):
+        self.message = MockMessage(content)
             self.delta = MockMessage(content)
             self.finish_reason = None
-    
-    class MockMessage:
-        def __init__(self, content):
-            self.content = content
+
+class MockMessage:
+    def __init__(self, content):
+        self.content = content
             self.role = "assistant"
             self.tool_calls = None
-    
-    class MockUsage:
-        def __init__(self):
-            self.prompt_tokens = 0
-            self.completion_tokens = 0
-            self.total_tokens = 0
-    
+
+class MockUsage:
+    def __init__(self):
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+
     ModelResponse = MockModelResponse
 
 
@@ -224,7 +224,7 @@ class LLMTimingCallback(CustomLogger):
     
     def __init__(self):
         if LITELLM_AVAILABLE:
-            super().__init__()
+        super().__init__()
         self.call_times = {}
     
     def log_pre_api_call(self, model, messages, kwargs):
@@ -272,7 +272,7 @@ class LLMTimingCallback(CustomLogger):
 
 # Register callback if LiteLLM available
 if LITELLM_AVAILABLE:
-    _timing_callback = LLMTimingCallback()
+_timing_callback = LLMTimingCallback()
     litellm.callbacks = [_timing_callback]
 
 
@@ -313,7 +313,7 @@ def setup_api_keys() -> None:
         os.environ["OR_APP_NAME"] = config.OR_APP_NAME
     if getattr(config, 'OR_SITE_URL', None):
         os.environ["OR_SITE_URL"] = config.OR_SITE_URL
-
+    
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -400,16 +400,16 @@ async def make_llm_api_call(
     if model_name == "mock-ai":
         logger.info(f"[LLM] 🎭 Using mock provider for testing")
         try:
-            from core.test_harness.mock_llm import get_mock_provider
-            mock_provider = get_mock_provider(delay_ms=20)
-            return mock_provider.acompletion(
-                messages=messages,
-                model=model_name,
-                stream=stream,
-                tools=tools,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+        from core.test_harness.mock_llm import get_mock_provider
+        mock_provider = get_mock_provider(delay_ms=20)
+        return mock_provider.acompletion(
+            messages=messages,
+            model=model_name,
+            stream=stream,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
         except ImportError:
             # Return simple mock response
             async def mock_response():
@@ -421,16 +421,16 @@ async def make_llm_api_call(
     # Use LiteLLM if available
     if LITELLM_AVAILABLE:
         try:
-            from core.ai_models import model_manager
+    from core.ai_models import model_manager
             resolved_model = model_manager.resolve_model_id(model_name) or model_name
-            
+    
             params = {
                 "model": resolved_model,
-                "messages": messages,
-                "temperature": temperature,
-                "stream": stream,
-            }
-            
+        "messages": messages,
+        "temperature": temperature,
+        "stream": stream,
+    }
+    
             if max_tokens:
                 params["max_tokens"] = max_tokens
             if response_format:
@@ -443,14 +443,14 @@ async def make_llm_api_call(
                 params["api_base"] = api_base
             if stop:
                 params["stop"] = stop
-            if tools:
-                params["tools"] = tools
-                params["tool_choice"] = tool_choice
-            if stream:
-                params["stream_options"] = {"include_usage": True}
-            
-            _save_debug_input(params)
-            
+    if tools:
+        params["tools"] = tools
+        params["tool_choice"] = tool_choice
+    if stream:
+        params["stream_options"] = {"include_usage": True}
+
+        _save_debug_input(params)
+        
             logger.info(f"[LLM] 🎯 Using LiteLLM: {resolved_model}")
             response = await litellm.acompletion(**params)
             
@@ -460,8 +460,8 @@ async def make_llm_api_call(
             if stream and hasattr(response, '__aiter__'):
                 return _wrap_streaming_response(response, call_start, model_name)
             return response
-            
-        except Exception as e:
+        
+    except Exception as e:
             logger.error(f"[LLM] ❌ LiteLLM error: {e}, falling back to OpenRouter")
     
     # Fallback to OpenRouter direct API
