@@ -558,7 +558,7 @@
                         ],
                         stream: true,
                         temperature: 0.7,
-                        max_tokens: 4000
+                        max_tokens: 400  // Réduit pour économiser les crédits
                     })
                 });
                 
@@ -622,8 +622,8 @@
                 // Specific error messages
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
                     errorMsg = '🔌 Erreur de connexion : Le backend FastAPI n\'est pas démarré !\n\nPour démarrer le backend :\n1. Ouvre un terminal dans le dossier du projet\n2. Lance : cd backend && python api.py\n3. Attends que le serveur démarre sur http://localhost:8000\n4. Recharge cette page';
-                } else if (error.message.includes('402')) {
-                    errorMsg = '💳 Erreur de paiement : Plus de crédit sur ton compte OpenRouter. Recharge ton compte sur https://openrouter.ai/credits';
+                } else if (error.message.includes('402') || error.message.includes('requires more credits')) {
+                    errorMsg = '💳 CRÉDITS INSUFFISANTS\n\n⚠️ Ton compte OpenRouter n\'a plus assez de crédits pour cette requête.\n\n🔗 Recharge ton compte ici :\nhttps://openrouter.ai/credits\n\n💡 Astuce : J\'ai réduit max_tokens à 400 pour économiser tes crédits restants. Recharge pour profiter pleinement de l\'IA !';
                 } else if (error.message.includes('401')) {
                     errorMsg = '🔑 Erreur d\'authentification : Clé API OpenRouter invalide ou expirée.';
                 } else if (error.message.includes('429')) {
