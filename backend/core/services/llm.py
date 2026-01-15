@@ -49,29 +49,29 @@ except ImportError as e:
     class CustomLogger:
         pass
     
-class MockModelResponse:
+    class MockModelResponse:
         def __init__(self, content="", **kwargs):
-        self.choices = [MockChoice(content)]
-        self.usage = MockUsage()
+            self.choices = [MockChoice(content)]
+            self.usage = MockUsage()
             self.model = kwargs.get('model', 'unknown')
 
-class MockChoice:
-    def __init__(self, content):
-        self.message = MockMessage(content)
+    class MockChoice:
+        def __init__(self, content):
+            self.message = MockMessage(content)
             self.delta = MockMessage(content)
             self.finish_reason = None
 
-class MockMessage:
-    def __init__(self, content):
-        self.content = content
+    class MockMessage:
+        def __init__(self, content):
+            self.content = content
             self.role = "assistant"
             self.tool_calls = None
 
-class MockUsage:
-    def __init__(self):
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.total_tokens = 0
+    class MockUsage:
+        def __init__(self):
+            self.prompt_tokens = 0
+            self.completion_tokens = 0
+            self.total_tokens = 0
 
     ModelResponse = MockModelResponse
 
