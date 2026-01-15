@@ -208,18 +208,31 @@
         .chat-input-area {
             padding: 16px;
             border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(12px);
         }
         
         .chat-input {
             width: 100%;
-            background: rgba(255,255,255,0.05);
-            border: none;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
             border-radius: 16px;
             padding: 16px;
             color: #fff;
             font-size: 14px;
             resize: none;
             outline: none;
+            transition: all 0.3s;
+        }
+        
+        .chat-input:focus {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        .chat-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .chat-input::placeholder {
@@ -650,33 +663,72 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
+                let chunkCount = 0;
                 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                            try {
-                                const json = JSON.parse(line.slice(6));
-                                const content = json.choices?.[0]?.delta?.content || '';
-                                if (content) {
-                                    fullContent += content;
-                                    document.getElementById('streamContent').innerHTML = formatContent(fullContent);
-                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                // Timeout de sécurité : 30 secondes max
+                const streamTimeout = setTimeout(() => {
+                    console.error('⏰ Timeout du stream après 30 secondes');
+                    reader.cancel();
+                }, 30000);
+                
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            console.log('✅ Stream done signal reçu');
+                            break;
+                        }
+                        
+                        chunkCount++;
+                        const chunk = decoder.decode(value);
+                        console.log(`📦 Chunk ${chunkCount}:`, chunk.substring(0, 100) + '...');
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.trim() === 'data: [DONE]') {
+                                console.log('✅ [DONE] signal reçu, fin du stream');
+                                break;
+                            }
+                            
+                            if (line.startsWith('data: ') && line.trim() !== 'data:') {
+                                try {
+                                    const json = JSON.parse(line.slice(6));
+                                    
+                                    // Gestion des erreurs dans le stream
+                                    if (json.error) {
+                                        console.error('❌ Erreur dans le stream:', json.error);
+                                        throw new Error(json.error.message || json.error);
+                                    }
+                                    
+                                    const content = json.choices?.[0]?.delta?.content || '';
+                                    if (content) {
+                                        fullContent += content;
+                                        const streamElem = document.getElementById('streamContent');
+                                        if (streamElem) {
+                                            streamElem.innerHTML = formatContent(fullContent);
+                                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('⚠️ Parse error:', e, 'Line:', line);
                                 }
-                            } catch (e) {
-                                console.warn('⚠️ Parse error:', e);
                             }
                         }
                     }
+                } finally {
+                    clearTimeout(streamTimeout);
                 }
                 
-                console.log('✅ Stream terminé, contenu:', fullContent.substring(0, 100) + '...');
-                messages.push({ role: 'assistant', content: fullContent });
+                console.log(`✅ Stream terminé après ${chunkCount} chunks`);
+                console.log('📝 Contenu complet (100 premiers chars):', fullContent.substring(0, 100) + '...');
+                console.log('📏 Longueur totale:', fullContent.length, 'caractères');
+                
+                if (fullContent) {
+                    messages.push({ role: 'assistant', content: fullContent });
+                } else {
+                    console.warn('⚠️ Aucun contenu reçu du stream !');
+                    addMessage('assistant', '⚠️ La réponse de l\'IA est vide. Réessaye ou vérifie tes crédits OpenRouter.');
+                }
                 
             } catch (error) {
                 console.error('💥 ERREUR COMPLÈTE:', error);
@@ -700,10 +752,14 @@
                 
                 console.error('🚨 Message d\'erreur affiché:', errorMsg);
                 addMessage('assistant', errorMsg);
+            } finally {
+                // TOUJOURS remettre isGenerating à false et réactiver l'input
+                console.log('🔄 Nettoyage: isGenerating = false');
+                document.getElementById('loader')?.remove();
+                isGenerating = false;
+                updateSendButtons();
+                console.log('✅ Interface réactivée');
             }
-            
-            isGenerating = false;
-            updateSendButtons();
         }
         
         // Nouvelle conversation
