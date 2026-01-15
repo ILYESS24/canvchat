@@ -32,86 +32,58 @@
             font-family: 'Inter', sans-serif;
         }
 
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
 
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #333;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #444;
-        }
-
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        textarea::-webkit-scrollbar {
-            display: none;
-        }
-
-        textarea {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        textarea::-webkit-scrollbar { display: none; }
+        textarea { -ms-overflow-style: none; scrollbar-width: none; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
         }
-
         @keyframes slideDown {
             from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes messageIn {
             from { opacity: 0; transform: translateY(20px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
-
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+        @keyframes bubbleIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
-        .animate-blink {
-            animation: blink 1s step-end infinite;
-        }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-blink { animation: blink 1s step-end infinite; }
+        .animate-slide-down { animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
+        .animate-message-in { animation: messageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-bubble-in { animation: bubbleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        .animate-slide-down {
-            animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .bubble-hover:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 40px -10px rgba(255,255,255,0.15);
         }
-
-        .animate-slide-up {
-            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
-            opacity: 0;
-        }
-
-        .animate-message-in {
-            animation: messageIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .bubble-hover:active {
+            transform: scale(0.98);
         }
     </style>
 </head>
@@ -120,39 +92,125 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
 
+        // ========================================
+        // TASK BUBBLES CONFIGURATION
+        // ========================================
+        const TASK_BUBBLES = [
+            {
+                id: "slides",
+                emoji: "📊",
+                label: "Slides",
+                description: "Créer une présentation",
+                prompt: "Crée une présentation professionnelle de 5 slides sur : ",
+                placeholder: "le sujet de ta présentation",
+                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                color: "from-orange-500/20 to-amber-500/20",
+                border: "border-orange-500/30"
+            },
+            {
+                id: "code",
+                emoji: "💻",
+                label: "Code",
+                description: "Écrire du code",
+                prompt: "Écris du code propre et commenté pour : ",
+                placeholder: "ce que tu veux coder",
+                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                color: "from-blue-500/20 to-cyan-500/20",
+                border: "border-blue-500/30"
+            },
+            {
+                id: "analyse",
+                emoji: "📈",
+                label: "Analyse",
+                description: "Analyser des données",
+                prompt: "Fais une analyse détaillée de : ",
+                placeholder: "ce que tu veux analyser",
+                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                color: "from-green-500/20 to-emerald-500/20",
+                border: "border-green-500/30"
+            },
+            {
+                id: "redaction",
+                emoji: "✍️",
+                label: "Rédaction",
+                description: "Écrire un texte",
+                prompt: "Rédige un texte professionnel sur : ",
+                placeholder: "le sujet de ton texte",
+                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                color: "from-purple-500/20 to-violet-500/20",
+                border: "border-purple-500/30"
+            },
+            {
+                id: "creative",
+                emoji: "🎨",
+                label: "Créatif",
+                description: "Brainstorm & idées",
+                prompt: "Génère des idées créatives et originales pour : ",
+                placeholder: "ton projet créatif",
+                model: { name: "GPT-4 Turbo", id: "openai/gpt-4-turbo" },
+                color: "from-pink-500/20 to-rose-500/20",
+                border: "border-pink-500/30"
+            },
+            {
+                id: "traduction",
+                emoji: "🌐",
+                label: "Traduction",
+                description: "Traduire un texte",
+                prompt: "Traduis le texte suivant en plusieurs langues (anglais, espagnol, allemand) : ",
+                placeholder: "le texte à traduire",
+                model: { name: "GPT-4o Mini", id: "openai/gpt-4o-mini" },
+                color: "from-teal-500/20 to-cyan-500/20",
+                border: "border-teal-500/30"
+            },
+            {
+                id: "resume",
+                emoji: "📝",
+                label: "Résumé",
+                description: "Résumer un contenu",
+                prompt: "Fais un résumé clair et structuré de : ",
+                placeholder: "ce que tu veux résumer",
+                model: { name: "GPT-4o Mini", id: "openai/gpt-4o-mini" },
+                color: "from-indigo-500/20 to-blue-500/20",
+                border: "border-indigo-500/30"
+            },
+            {
+                id: "math",
+                emoji: "🔢",
+                label: "Maths",
+                description: "Calculs & équations",
+                prompt: "Résous ce problème mathématique étape par étape : ",
+                placeholder: "ton problème mathématique",
+                model: { name: "Claude 3.5", id: "anthropic/claude-3.5-sonnet" },
+                color: "from-yellow-500/20 to-orange-500/20",
+                border: "border-yellow-500/30"
+            }
+        ];
+
         // OpenRouter model selection based on query type
         const selectBestModel = (query) => {
             const q = query.toLowerCase();
             
-            // Presentation/Slides
             if (q.includes("presentation") || q.includes("slide") || q.includes("ppt") || q.includes("diapo")) {
                 return { model: "openai/gpt-4-turbo", name: "GPT-4 Turbo", emoji: "📊" };
             }
-            // Coding
             if (q.includes("code") || q.includes("programming") || q.includes("debug") || q.includes("function") || q.includes("python") || q.includes("javascript")) {
                 return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "💻" };
             }
-            // Writing/Creative
             if (q.includes("write") || q.includes("story") || q.includes("creative") || q.includes("écris") || q.includes("rédige")) {
                 return { model: "openai/gpt-4-turbo", name: "GPT-4 Turbo", emoji: "✍️" };
             }
-            // Math/Analysis
             if (q.includes("math") || q.includes("calculate") || q.includes("analyze") || q.includes("analyse") || q.includes("calcul")) {
                 return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "🔢" };
             }
-            // Translation
             if (q.includes("translate") || q.includes("traduis") || q.includes("traduction")) {
                 return { model: "openai/gpt-4o-mini", name: "GPT-4o Mini", emoji: "🌐" };
             }
-            // Summary
             if (q.includes("summarize") || q.includes("résume") || q.includes("summary")) {
                 return { model: "openai/gpt-4o-mini", name: "GPT-4o Mini", emoji: "📝" };
             }
-            // Short queries - fast model
             if (q.length < 50) {
                 return { model: "mistralai/mixtral-8x7b-instruct", name: "Mixtral 8x7B", emoji: "⚡" };
             }
-            // Default - Claude for complex tasks
             return { model: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", emoji: "🤖" };
         };
 
@@ -165,6 +223,7 @@
             const [isGenerating, setIsGenerating] = useState(false);
             const [streamedContent, setStreamedContent] = useState("");
             const [selectedModel, setSelectedModel] = useState(null);
+            const [activeTaskBubble, setActiveTaskBubble] = useState(null);
 
             const fileInputRef = useRef(null);
             const textareaRef = useRef(null);
@@ -176,9 +235,80 @@
                 }
             }, [messages, streamedContent]);
 
-            const callOpenRouter = async (userMessage) => {
-                const modelInfo = selectBestModel(userMessage);
+            // Focus textarea when bubble is selected
+            useEffect(() => {
+                if (activeTaskBubble && textareaRef.current) {
+                    textareaRef.current.focus();
+                }
+            }, [activeTaskBubble]);
+
+            const callOpenRouter = async (userMessage, forceModel = null) => {
+                const modelInfo = forceModel || selectBestModel(userMessage);
                 setSelectedModel(modelInfo);
+
+                // Build system prompt based on task type
+                let systemPrompt = "Tu es un assistant IA avancé et polyvalent. Tu réponds de manière claire, structurée et utile. Tu utilises des emojis pour rendre tes réponses plus engageantes.";
+                
+                if (activeTaskBubble) {
+                    const taskPrompts = {
+                        slides: `Tu es un expert en création de présentations professionnelles. 
+Crée des slides structurées avec:
+- Un titre accrocheur pour chaque slide
+- 3-5 points clés par slide
+- Des suggestions de visuels
+- Des notes pour le présentateur
+
+Format chaque slide ainsi:
+---
+## 📊 Slide X: [Titre]
+**Points clés:**
+• Point 1
+• Point 2
+• Point 3
+
+**Visuel suggéré:** [Description]
+**Note présentateur:** [Conseil]
+---`,
+                        code: `Tu es un développeur senior expert. Fournis du code:
+- Propre et bien structuré
+- Avec des commentaires explicatifs
+- Suivant les meilleures pratiques
+- Avec des exemples d'utilisation`,
+                        analyse: `Tu es un analyste expert. Fournis des analyses:
+- Structurées avec des sections claires
+- Avec des données et métriques
+- Avec des insights actionnables
+- Avec des recommandations concrètes`,
+                        redaction: `Tu es un rédacteur professionnel. Rédige des textes:
+- Avec une structure claire (intro, développement, conclusion)
+- Un ton adapté au contexte
+- Des transitions fluides
+- Un style engageant`,
+                        creative: `Tu es un directeur créatif talentueux. Propose:
+- Des idées originales et innovantes
+- Plusieurs options/variantes
+- Des concepts développés
+- Des suggestions d'implémentation`,
+                        traduction: `Tu es un traducteur professionnel polyglotte. Fournis:
+- Des traductions précises et naturelles
+- Le texte dans chaque langue demandée
+- Des notes sur les nuances culturelles si pertinent`,
+                        resume: `Tu es expert en synthèse. Crée des résumés:
+- Clairs et concis
+- Avec les points essentiels
+- Structurés par thème
+- Avec une conclusion`,
+                        math: `Tu es un mathématicien expert. Résous les problèmes:
+- Étape par étape
+- Avec des explications claires
+- En vérifiant les résultats
+- Avec des méthodes alternatives si utile`
+                    };
+                    
+                    if (taskPrompts[activeTaskBubble.id]) {
+                        systemPrompt = taskPrompts[activeTaskBubble.id];
+                    }
+                }
 
                 try {
                     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -190,12 +320,9 @@
                             "X-Title": "Kortix AI"
                         },
                         body: JSON.stringify({
-                            model: modelInfo.model,
+                            model: forceModel?.id || modelInfo.model,
                             messages: [
-                                { 
-                                    role: "system", 
-                                    content: "Tu es un assistant IA avancé et polyvalent. Tu réponds de manière claire, structurée et utile. Tu utilises des emojis pour rendre tes réponses plus engageantes. Pour les présentations, structure ta réponse slide par slide avec des titres et points clés."
-                                },
+                                { role: "system", content: systemPrompt },
                                 ...messages.map(m => ({ role: m.role, content: m.content })),
                                 { role: "user", content: userMessage }
                             ],
@@ -228,9 +355,7 @@
                                             fullContent += content;
                                             setStreamedContent(fullContent);
                                         }
-                                    } catch (e) {
-                                        // Skip
-                                    }
+                                    } catch (e) {}
                                 }
                             }
                         }
@@ -246,7 +371,13 @@
             const handleSubmit = async () => {
                 if (!message.trim() && files.length === 0) return;
 
-                const userMessage = message.trim();
+                let userMessage = message.trim();
+                
+                // If a bubble is active, prepend the prompt
+                if (activeTaskBubble && userMessage) {
+                    userMessage = activeTaskBubble.prompt + userMessage;
+                }
+                
                 setMessage("");
 
                 const userMsg = {
@@ -263,7 +394,15 @@
                 setIsGenerating(true);
                 setStreamedContent("");
 
-                const response = await callOpenRouter(userMessage);
+                // Use the bubble's model if active
+                const forceModel = activeTaskBubble ? {
+                    id: activeTaskBubble.model.id,
+                    model: activeTaskBubble.model.id,
+                    name: activeTaskBubble.model.name,
+                    emoji: activeTaskBubble.emoji
+                } : null;
+
+                const response = await callOpenRouter(userMessage, forceModel);
 
                 const assistantMsg = {
                     id: (Date.now() + 1).toString(),
@@ -274,12 +413,22 @@
                 setMessages(prev => [...prev, assistantMsg]);
                 setIsGenerating(false);
                 setStreamedContent("");
+                setActiveTaskBubble(null);
+            };
+
+            const handleBubbleClick = (bubble) => {
+                setActiveTaskBubble(bubble);
+                setMessage("");
             };
 
             const handleKeyDown = (e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSubmit();
+                }
+                if (e.key === "Escape" && activeTaskBubble) {
+                    setActiveTaskBubble(null);
+                    setMessage("");
                 }
             };
 
@@ -323,7 +472,7 @@
                         {/* Content */}
                         <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
                             {/* Title */}
-                            <div className="mb-16 animate-slide-down">
+                            <div className="mb-12 animate-slide-down">
                                 <h1 
                                     className="text-6xl md:text-8xl font-serif italic text-white/90 tracking-wide text-center drop-shadow-2xl"
                                     style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
@@ -334,6 +483,21 @@
 
                             {/* Prompt Area */}
                             <div className="w-full max-w-4xl animate-slide-up">
+                                {/* Active Bubble Indicator */}
+                                {activeTaskBubble && (
+                                    <div className="flex items-center gap-2 mb-3 px-2 animate-fade-in">
+                                        <span className="text-lg">{activeTaskBubble.emoji}</span>
+                                        <span className="text-sm text-white/70">{activeTaskBubble.description}</span>
+                                        <span className="text-xs text-white/40">avec {activeTaskBubble.model.name}</span>
+                                        <button 
+                                            onClick={() => { setActiveTaskBubble(null); setMessage(""); }}
+                                            className="ml-auto p-1 rounded-full hover:bg-white/10"
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Files Preview */}
                                 {files.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mb-3">
@@ -359,7 +523,7 @@
                                 <div className="relative group">
                                     <div className="absolute -inset-0.5 bg-gradient-to-r from-white/10 via-white/5 to-white/10 rounded-[32px] blur opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500" />
 
-                                    <div className="relative bg-white/5 backdrop-blur-xl rounded-[32px] overflow-hidden transition-all duration-300 hover:bg-white/8 focus-within:bg-white/10">
+                                    <div className={`relative bg-white/5 backdrop-blur-xl rounded-[32px] overflow-hidden transition-all duration-300 hover:bg-white/8 focus-within:bg-white/10 ${activeTaskBubble ? activeTaskBubble.border + ' border' : ''}`}>
                                         <div className="flex items-center gap-3 px-5 py-4">
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
@@ -373,7 +537,7 @@
                                                 value={message}
                                                 onChange={(e) => setMessage(e.target.value)}
                                                 onKeyDown={handleKeyDown}
-                                                placeholder="How can I help you today?"
+                                                placeholder={activeTaskBubble ? activeTaskBubble.placeholder : "How can I help you today?"}
                                                 rows={1}
                                                 className="flex-1 bg-transparent text-white text-base placeholder-white/40 resize-none focus:outline-none min-h-[28px] max-h-[200px] py-1"
                                                 style={{ scrollbarWidth: 'none' }}
@@ -414,8 +578,37 @@
                                     accept="image/*,.pdf,.doc,.docx,.txt,.md,.csv,.json"
                                 />
 
+                                {/* Task Bubbles */}
+                                <div className="mt-6">
+                                    <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+                                        {TASK_BUBBLES.map((bubble, index) => (
+                                            <button
+                                                key={bubble.id}
+                                                onClick={() => handleBubbleClick(bubble)}
+                                                className={`
+                                                    flex items-center gap-2 px-4 py-2.5 rounded-full
+                                                    bg-gradient-to-r ${bubble.color}
+                                                    border ${bubble.border}
+                                                    backdrop-blur-xl
+                                                    transition-all duration-300 ease-out
+                                                    bubble-hover
+                                                    animate-bubble-in
+                                                    ${activeTaskBubble?.id === bubble.id ? 'ring-2 ring-white/30 scale-105' : ''}
+                                                `}
+                                                style={{ animationDelay: `${0.3 + index * 0.05}s`, opacity: 0 }}
+                                            >
+                                                <span className="text-lg">{bubble.emoji}</span>
+                                                <span className="text-sm font-medium text-white/90">{bubble.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <p className="text-center text-white/30 text-xs mt-4">
-                                    Press Enter to send • Shift + Enter for new line
+                                    {activeTaskBubble 
+                                        ? `${activeTaskBubble.emoji} ${activeTaskBubble.description} • Échap pour annuler`
+                                        : "Clique sur une bulle ou écris directement • Enter pour envoyer"
+                                    }
                                 </p>
                             </div>
                         </div>
@@ -440,6 +633,25 @@
 
                     {/* Content */}
                     <div className="relative z-10 flex flex-col h-screen">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl">🎨</span>
+                                <span className="font-medium text-white/90">Kortix AI</span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setPhase("landing");
+                                    setMessages([]);
+                                    setActiveTaskBubble(null);
+                                }}
+                                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                                title="Nouvelle conversation"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/70"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </button>
+                        </div>
+
                         {/* Chat Messages */}
                         <div
                             ref={chatContainerRef}
@@ -456,7 +668,7 @@
                                         {msg.role === "user" ? (
                                             <div className="flex justify-end">
                                                 <div className="max-w-[85%] bg-white/5 backdrop-blur-xl rounded-2xl px-4 py-3">
-                                                    <p className="text-sm text-white/90 leading-relaxed">{msg.content}</p>
+                                                    <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                                 </div>
                                             </div>
                                         ) : (
@@ -506,23 +718,60 @@
                                     <div className="flex items-center gap-3 animate-fade-in">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/40 animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                                         <span className="text-sm text-white/50">
-                                            {selectedModel?.emoji} Selecting {selectedModel?.name || "best model"} & generating...
+                                            {selectedModel?.emoji} {selectedModel?.name || "AI"} génère...
                                         </span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
+                        {/* Quick Bubbles in Chat */}
+                        <div className="flex justify-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
+                            {TASK_BUBBLES.slice(0, 4).map((bubble) => (
+                                <button
+                                    key={bubble.id}
+                                    onClick={() => handleBubbleClick(bubble)}
+                                    disabled={isGenerating}
+                                    className={`
+                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                                        bg-white/5 border border-white/10
+                                        hover:bg-white/10 hover:border-white/20
+                                        transition-all text-xs
+                                        disabled:opacity-50 disabled:cursor-not-allowed
+                                        ${activeTaskBubble?.id === bubble.id ? 'ring-1 ring-white/30' : ''}
+                                    `}
+                                >
+                                    <span>{bubble.emoji}</span>
+                                    <span className="text-white/70">{bubble.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
                         {/* Input Area */}
                         <div className="flex-shrink-0 p-4">
                             <div className="max-w-4xl mx-auto">
-                                <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-2">
+                                {/* Active Bubble Indicator */}
+                                {activeTaskBubble && (
+                                    <div className="flex items-center gap-2 mb-2 px-2 animate-fade-in">
+                                        <span>{activeTaskBubble.emoji}</span>
+                                        <span className="text-xs text-white/60">{activeTaskBubble.description}</span>
+                                        <button 
+                                            onClick={() => { setActiveTaskBubble(null); setMessage(""); }}
+                                            className="ml-auto p-1 rounded-full hover:bg-white/10"
+                                        >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className={`bg-white/5 backdrop-blur-xl rounded-2xl p-2 ${activeTaskBubble ? activeTaskBubble.border + ' border' : ''}`}>
                                     <div className="flex flex-col gap-2">
                                         <textarea
+                                            ref={textareaRef}
                                             value={message}
                                             onChange={(e) => setMessage(e.target.value)}
                                             onKeyDown={handleKeyDown}
-                                            placeholder="Décris ce dont tu as besoin d'aide..."
+                                            placeholder={activeTaskBubble ? activeTaskBubble.placeholder : "Décris ce dont tu as besoin d'aide..."}
                                             rows={2}
                                             disabled={isGenerating}
                                             className="w-full bg-transparent text-white text-sm placeholder-white/40 resize-none focus:outline-none px-3 py-3 min-h-[72px] max-h-[200px]"
