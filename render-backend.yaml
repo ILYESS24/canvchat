@@ -17,5 +17,7 @@ services:
         value: https://kortix-backend.onrender.com/v1
       - key: PORT
         value: 8000
+      - key: OPENROUTER_API_KEY
+        sync: false  # Must be set manually in Render Dashboard for security
     healthCheckPath: /v1/health
     plan: starter
