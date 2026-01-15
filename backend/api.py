@@ -542,6 +542,77 @@ async def clear_agent_history(
     
     return {"success": True, "message": f"History cleared for session {session_id}"}
 
+# OpenAI-compatible chat completions endpoint for frontend
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatCompletionRequest(BaseModel):
+    model: str
+    messages: list[ChatMessage]
+    stream: bool = True
+    temperature: float = 0.7
+    max_tokens: int = 4000
+
+@api_router.post("/chat/completions", summary="OpenAI-compatible Chat Completions", tags=["llm"])
+async def chat_completions(request: ChatCompletionRequest):
+    """
+    OpenAI-compatible chat completions endpoint.
+    Uses the backend LLM service with OpenRouter.
+    """
+    from core.services.llm import make_llm_api_call
+    
+    try:
+        # Convert messages to dict format
+        messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+        
+        # Call LLM service
+        response = await make_llm_api_call(
+            messages=messages_dict,
+            model_name=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            stream=request.stream
+        )
+        
+        # If streaming, return SSE response
+        if request.stream:
+            async def generate():
+                try:
+                    async for chunk in response:
+                        # Format as OpenRouter SSE
+                        if isinstance(chunk, dict):
+                            yield f"data: {json_module.dumps(chunk)}\n\n"
+                        else:
+                            # LiteLLM ModelResponse
+                            chunk_dict = {
+                                "choices": [{
+                                    "delta": {
+                                        "content": chunk.choices[0].delta.content if hasattr(chunk.choices[0], 'delta') else ""
+                                    }
+                                }]
+                            }
+                            yield f"data: {json_module.dumps(chunk_dict)}\n\n"
+                    yield "data: [DONE]\n\n"
+                except Exception as e:
+                    logger.error(f"Streaming error: {e}")
+                    yield f"data: {json_module.dumps({'error': str(e)})}\n\n"
+            
+            return FastAPIStreamingResponse(
+                generate(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                }
+            )
+        else:
+            # Non-streaming response
+            return response
+    except Exception as e:
+        logger.error(f"Chat completions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 from core.sandbox.canvas_ai_api import router as canvas_ai_router
 api_router.include_router(canvas_ai_router)
 

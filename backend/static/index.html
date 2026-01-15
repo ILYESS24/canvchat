@@ -521,7 +521,7 @@
                 .replace(/```([\s\S]*?)```/g, '<pre style="background:#1e1e2e;padding:12px;border-radius:8px;overflow-x:auto">$1</pre>');
         }
         
-        // Appeler OpenRouter
+        // Appeler le backend FastAPI (qui gère OpenRouter)
         async function callOpenRouter(userMessage) {
             isGenerating = true;
             currentModel = selectBestModel(userMessage);
@@ -536,18 +536,16 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
             try {
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                // Appel au backend FastAPI local
+                const response = await fetch('/v1/chat/completions', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': OR_SITE_URL,
-                        'X-Title': OR_APP_NAME
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         model: currentModel.id,
                         messages: [
-                            { role: 'system', content: 'Tu es un assistant IA polyvalent. Réponds de manière claire et utile avec des emojis.' },
+                            { role: 'system', content: 'Tu es un assistant IA polyvalent. Réponds de manière claire et utile.' },
                             ...messages.map(m => ({ role: m.role, content: m.content }))
                         ],
                         stream: true,
@@ -598,7 +596,20 @@
                 
             } catch (error) {
                 document.getElementById('loader')?.remove();
-                addMessage('assistant', '❌ Erreur: ' + error.message);
+                let errorMsg = '❌ Erreur: ' + error.message;
+                
+                // Specific error messages
+                if (error.message.includes('402')) {
+                    errorMsg = '💳 Erreur de paiement : Plus de crédit sur ton compte OpenRouter. Recharge ton compte sur https://openrouter.ai/credits';
+                } else if (error.message.includes('401')) {
+                    errorMsg = '🔑 Erreur d\'authentification : Clé API OpenRouter invalide ou expirée.';
+                } else if (error.message.includes('429')) {
+                    errorMsg = '⏱️ Trop de requêtes : Attends quelques instants avant de réessayer.';
+                } else if (error.message.includes('500')) {
+                    errorMsg = '⚙️ Erreur serveur : Problème avec le backend. Réessaye dans un instant.';
+                }
+                
+                addMessage('assistant', errorMsg);
             }
             
             isGenerating = false;
