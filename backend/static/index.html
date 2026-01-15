@@ -85,6 +85,84 @@
         .bubble-hover:active {
             transform: scale(0.98);
         }
+
+        /* Bubble task styles */
+        .task-bubble {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-radius: 9999px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease-out;
+            cursor: pointer;
+            border: 1px solid;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Gradient backgrounds for each bubble type */
+        .bubble-slides {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(245, 158, 11, 0.2));
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        .bubble-code {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .bubble-analyse {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.2));
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+        .bubble-redaction {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.2));
+            border-color: rgba(168, 85, 247, 0.3);
+        }
+        .bubble-creative {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(244, 63, 94, 0.2));
+            border-color: rgba(236, 72, 153, 0.3);
+        }
+        .bubble-traduction {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(6, 182, 212, 0.2));
+            border-color: rgba(20, 184, 166, 0.3);
+        }
+        .bubble-resume {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(59, 130, 246, 0.2));
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        .bubble-math {
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(249, 115, 22, 0.2));
+            border-color: rgba(234, 179, 8, 0.3);
+        }
+        .bubble-research {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(59, 130, 246, 0.2));
+            border-color: rgba(14, 165, 233, 0.3);
+        }
+        .bubble-expert {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2));
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+        .bubble-debug {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(249, 115, 22, 0.2));
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .bubble-explain {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 179, 8, 0.2));
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .task-bubble.active {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .task-bubble span:first-child {
+            font-size: 1.125rem;
+        }
+
+        .task-bubble span:last-child {
+            color: rgba(255, 255, 255, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -690,25 +768,19 @@ Format chaque slide ainsi:
 
                                 {/* Task Bubbles */}
                                 <div className="mt-6">
-                                    <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem' }}>
                                         {TASK_BUBBLES.map((bubble, index) => (
                                             <button
                                                 key={bubble.id}
                                                 onClick={() => handleBubbleClick(bubble)}
-                                                className={`
-                                                    flex items-center gap-2 px-4 py-2.5 rounded-full
-                                                    bg-gradient-to-r ${bubble.color}
-                                                    border ${bubble.border}
-                                                    backdrop-blur-xl
-                                                    transition-all duration-300 ease-out
-                                                    bubble-hover
-                                                    animate-bubble-in
-                                                    ${activeTaskBubble?.id === bubble.id ? 'ring-2 ring-white/30 scale-105' : ''}
-                                                `}
-                                                style={{ animationDelay: `${0.3 + index * 0.05}s`, opacity: 0 }}
+                                                className={`task-bubble bubble-${bubble.id} bubble-hover animate-bubble-in ${activeTaskBubble?.id === bubble.id ? 'active' : ''}`}
+                                                style={{ 
+                                                    animationDelay: `${0.3 + index * 0.05}s`, 
+                                                    opacity: 0 
+                                                }}
                                             >
-                                                <span className="text-lg">{bubble.emoji}</span>
-                                                <span className="text-sm font-medium text-white/90">{bubble.label}</span>
+                                                <span>{bubble.emoji}</span>
+                                                <span>{bubble.label}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -836,23 +908,22 @@ Format chaque slide ainsi:
                         </div>
 
                         {/* Quick Bubbles in Chat */}
-                        <div className="flex justify-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem 1rem', overflowX: 'auto' }} className="scrollbar-hide">
                             {TASK_BUBBLES.slice(0, 4).map((bubble) => (
                                 <button
                                     key={bubble.id}
                                     onClick={() => handleBubbleClick(bubble)}
                                     disabled={isGenerating}
-                                    className={`
-                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                                        bg-white/5 border border-white/10
-                                        hover:bg-white/10 hover:border-white/20
-                                        transition-all text-xs
-                                        disabled:opacity-50 disabled:cursor-not-allowed
-                                        ${activeTaskBubble?.id === bubble.id ? 'ring-1 ring-white/30' : ''}
-                                    `}
+                                    className={`task-bubble bubble-${bubble.id} ${activeTaskBubble?.id === bubble.id ? 'active' : ''}`}
+                                    style={{ 
+                                        fontSize: '0.75rem',
+                                        padding: '0.375rem 0.75rem',
+                                        opacity: isGenerating ? 0.5 : 1,
+                                        cursor: isGenerating ? 'not-allowed' : 'pointer'
+                                    }}
                                 >
                                     <span>{bubble.emoji}</span>
-                                    <span className="text-white/70">{bubble.label}</span>
+                                    <span>{bubble.label}</span>
                                 </button>
                             ))}
                         </div>
