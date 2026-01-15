@@ -206,28 +206,29 @@
         }
         
         .chat-input-area {
-            padding: 16px;
+            padding: 12px 16px;
             border-top: 1px solid rgba(255,255,255,0.1);
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(12px);
+            background: transparent;
         }
         
         .chat-input {
             width: 100%;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 16px;
-            padding: 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 10px 14px;
             color: #fff;
-            font-size: 14px;
+            font-size: 13px;
             resize: none;
             outline: none;
             transition: all 0.3s;
+            min-height: 40px;
+            max-height: 150px;
         }
         
         .chat-input:focus {
-            background: rgba(255,255,255,0.12);
-            border-color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
         }
         
         .chat-input:disabled {
@@ -342,40 +343,41 @@
                     
                     <button class="btn btn-send" id="sendBtn" onclick="sendMessage()">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
                     </button>
                 </div>
             </div>
             
             <div class="bubbles">
-                <div class="bubble" onclick="selectBubble(this, 'slides', 'Crée une présentation de 5 slides sur : ')">
+                <div class="bubble" onclick="selectBubble(this, 'slides', 'Create a 5-slide presentation about: ')">
                     <span>Slides</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'code', 'Écris du code propre pour : ')">
+                <div class="bubble" onclick="selectBubble(this, 'code', 'Write clean code for: ')">
                     <span>Code</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'analyse', 'Analyse en détail : ')">
-                    <span>Analyse</span>
+                <div class="bubble" onclick="selectBubble(this, 'analyse', 'Analyze in detail: ')">
+                    <span>Analysis</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'redaction', 'Rédige un texte professionnel sur : ')">
-                    <span>Rédaction</span>
+                <div class="bubble" onclick="selectBubble(this, 'redaction', 'Write a professional text about: ')">
+                    <span>Writing</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'creative', 'Génère des idées créatives pour : ')">
-                    <span>Créatif</span>
+                <div class="bubble" onclick="selectBubble(this, 'creative', 'Generate creative ideas for: ')">
+                    <span>Creative</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'traduction', 'Traduis en anglais, espagnol et allemand : ')">
-                    <span>Traduction</span>
+                <div class="bubble" onclick="selectBubble(this, 'traduction', 'Translate to English, Spanish and German: ')">
+                    <span>Translation</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'resume', 'Fais un résumé de : ')">
-                    <span>Résumé</span>
+                <div class="bubble" onclick="selectBubble(this, 'resume', 'Summarize: ')">
+                    <span>Summary</span>
                 </div>
-                <div class="bubble" onclick="selectBubble(this, 'math', 'Résous ce problème mathématique : ')">
-                    <span>Maths</span>
+                <div class="bubble" onclick="selectBubble(this, 'math', 'Solve this math problem: ')">
+                    <span>Math</span>
                 </div>
             </div>
             
-            <p class="hint">Clique sur une bulle ou écris directement • Enter pour envoyer</p>
+            <p class="hint">Click a bubble or type directly • Press Enter to send</p>
         </div>
         
         <!-- Chat Page -->
@@ -392,26 +394,27 @@
             <div class="chat-messages" id="chatMessages"></div>
             
             <div class="chat-input-area">
-                <div style="display: flex; align-items: flex-end; gap: 12px; width: 100%;">
+                <div style="display: flex; align-items: flex-end; gap: 8px; width: 100%;">
                     <textarea 
                         class="chat-input" 
                         id="chatInput" 
-                        placeholder="Décris ce dont tu as besoin... (Enter pour envoyer, Shift+Enter pour nouvelle ligne)"
-                        rows="2"
-                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                        placeholder="Type your message... (Enter to send)"
+                        rows="1"
+                        oninput="this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px';"
                         onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"
                         onfocus="console.log('🔵 Textarea chat focused')"
-                        style="flex: 1; max-height: 200px; overflow-y: auto;"
+                        style="flex: 1;"
                     ></textarea>
                     <button 
                         class="btn btn-send" 
                         onclick="sendChatMessage()"
                         id="chatSendBtn"
-                        style="margin-bottom: 8px; min-width: 44px; height: 44px;"
-                        title="Envoyer (Enter)"
+                        style="margin-bottom: 4px; min-width: 36px; height: 36px; padding: 8px;"
+                        title="Send (Enter)"
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
                     </button>
                 </div>
@@ -452,13 +455,13 @@
             return { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5', emoji: '🤖' };
         }
         
-        // Sélectionner une bulle
+        // Select a bubble
         function selectBubble(element, type, prompt) {
             document.querySelectorAll('.bubble').forEach(b => b.classList.remove('active'));
             element.classList.add('active');
             activeBubble = type;
             activePrompt = prompt;
-            document.getElementById('messageInput').placeholder = 'Complète ta demande...';
+            document.getElementById('messageInput').placeholder = 'Complete your request...';
             document.getElementById('messageInput').focus();
         }
         
@@ -493,46 +496,46 @@
             callOpenRouter(message);
         }
         
-        // Envoyer un message depuis le chat
+        // Send message from chat
         function sendChatMessage() {
-            console.log('📤 sendChatMessage() appelée depuis le chat');
+            console.log('📤 sendChatMessage() called from chat');
             const input = document.getElementById('chatInput');
             
             if (!input) {
-                console.error('❌ Élément chatInput non trouvé !');
+                console.error('❌ chatInput element not found!');
                 return;
             }
             
             const message = input.value.trim();
-            console.log('📝 Message du chat:', message);
+            console.log('📝 Chat message:', message);
             console.log('⏳ isGenerating:', isGenerating);
             
             if (!message) {
-                console.log('⚠️ Message vide, annulation');
+                console.log('⚠️ Empty message, canceling');
                 return;
             }
             
             if (isGenerating) {
-                console.log('⚠️ Génération en cours, annulation');
-                alert('⏳ Attends que l\'IA finisse de répondre !');
+                console.log('⚠️ Generation in progress, canceling');
+                alert('⏳ Wait for AI to finish responding!');
                 return;
             }
             
-            console.log('✅ Envoi du message...');
+            console.log('✅ Sending message...');
             addMessage('user', message);
             input.value = '';
             input.style.height = 'auto'; // Reset height
             callOpenRouter(message);
         }
         
-        // Messages de statut variés
+        // Status messages
         const statusMessages = [
-            'Configuration de l\'IA',
-            'Analyse en cours',
-            'Traitement de la requête',
-            'Génération de la réponse',
-            'Optimisation du résultat',
-            'Finalisation'
+            'Configuring AI',
+            'Analyzing',
+            'Processing request',
+            'Generating response',
+            'Optimizing result',
+            'Finalizing'
         ];
         
         function getRandomStatus() {
@@ -726,39 +729,39 @@
                 if (fullContent) {
                     messages.push({ role: 'assistant', content: fullContent });
                 } else {
-                    console.warn('⚠️ Aucun contenu reçu du stream !');
-                    addMessage('assistant', '⚠️ La réponse de l\'IA est vide. Réessaye ou vérifie tes crédits OpenRouter.');
+                    console.warn('⚠️ No content received from stream!');
+                    addMessage('assistant', '⚠️ AI response is empty. Try again or check your OpenRouter credits.');
                 }
                 
             } catch (error) {
-                console.error('💥 ERREUR COMPLÈTE:', error);
+                console.error('💥 COMPLETE ERROR:', error);
                 document.getElementById('loader')?.remove();
-                let errorMsg = '❌ Erreur: ' + error.message;
+                let errorMsg = '❌ Error: ' + error.message;
                 
                 // Specific error messages
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMsg = '🔌 Erreur de connexion : Le backend FastAPI n\'est pas démarré !\n\nPour démarrer le backend :\n1. Ouvre un terminal dans le dossier du projet\n2. Lance : cd backend && python api.py\n3. Attends que le serveur démarre sur http://localhost:8000\n4. Recharge cette page';
+                    errorMsg = '🔌 Connection Error: Backend FastAPI is not running!\n\nTo start the backend:\n1. Open a terminal in the project folder\n2. Run: cd backend && python api.py\n3. Wait for server to start on http://localhost:8000\n4. Reload this page';
                 } else if (error.message.includes('402') || error.message.includes('requires more credits')) {
-                    errorMsg = '💳 CRÉDITS INSUFFISANTS\n\n⚠️ Ton compte OpenRouter n\'a plus assez de crédits pour cette requête.\n\n🔗 Recharge ton compte ici :\nhttps://openrouter.ai/credits\n\n💡 Astuce : J\'ai réduit max_tokens à 400 pour économiser tes crédits restants. Recharge pour profiter pleinement de l\'IA !';
+                    errorMsg = '💳 INSUFFICIENT CREDITS\n\n⚠️ Your OpenRouter account doesn\'t have enough credits for this request.\n\n🔗 Recharge your account here:\nhttps://openrouter.ai/credits\n\n💡 Tip: I reduced max_tokens to 400 to save your remaining credits. Recharge to fully enjoy the AI!';
                 } else if (error.message.includes('401')) {
-                    errorMsg = '🔑 Erreur d\'authentification : Clé API OpenRouter invalide ou expirée.';
+                    errorMsg = '🔑 Authentication Error: OpenRouter API key is invalid or expired.';
                 } else if (error.message.includes('429')) {
-                    errorMsg = '⏱️ Trop de requêtes : Attends quelques instants avant de réessayer.';
+                    errorMsg = '⏱️ Too Many Requests: Wait a few moments before trying again.';
                 } else if (error.message.includes('404')) {
-                    errorMsg = '❓ Endpoint non trouvé : L\'endpoint /v1/chat/completions n\'existe pas sur le backend.';
+                    errorMsg = '❓ Endpoint Not Found: The /v1/chat/completions endpoint doesn\'t exist on the backend.';
                 } else if (error.message.includes('500')) {
-                    errorMsg = '⚙️ Erreur serveur : Problème avec le backend. Réessaye dans un instant.';
+                    errorMsg = '⚙️ Server Error: Problem with the backend. Try again in a moment.';
                 }
                 
-                console.error('🚨 Message d\'erreur affiché:', errorMsg);
+                console.error('🚨 Error message displayed:', errorMsg);
                 addMessage('assistant', errorMsg);
             } finally {
-                // TOUJOURS remettre isGenerating à false et réactiver l'input
-                console.log('🔄 Nettoyage: isGenerating = false');
+                // ALWAYS reset isGenerating to false and reactivate input
+                console.log('🔄 Cleanup: isGenerating = false');
                 document.getElementById('loader')?.remove();
                 isGenerating = false;
                 updateSendButtons();
-                console.log('✅ Interface réactivée');
+                console.log('✅ Interface reactivated');
             }
         }
         
