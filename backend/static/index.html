@@ -171,11 +171,11 @@
         }
         
         .chat-header {
-            padding: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
         }
         
         .chat-messages {
@@ -185,18 +185,20 @@
         }
         
         .message {
-            max-width: 80%;
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            border-radius: 16px;
+            max-width: 75%;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
             background: rgba(255,255,255,0.05);
             backdrop-filter: blur(8px);
+            font-size: 14px;
+            line-height: 1.5;
         }
         
         .message.user {
             margin-left: auto;
-            background: rgba(99,102,241,0.2);
-            border: 1px solid rgba(99,102,241,0.3);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
         }
         
         .message.assistant {
@@ -224,13 +226,27 @@
             color: rgba(255,255,255,0.4);
         }
         
-        .model-badge {
+        .status-indicator {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 6px;
+            font-weight: 300;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
         }
         
         .typing {
@@ -259,17 +275,19 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            color: rgba(255,255,255,0.5);
-            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+            font-weight: 300;
+            padding: 8px 0;
         }
         
         .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-top-color: rgba(255,255,255,0.8);
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: rgba(255,255,255,0.5);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 1.2s linear infinite;
         }
         
         @keyframes spin {
@@ -350,10 +368,6 @@
         <!-- Chat Page -->
         <div class="chat-container" id="chat">
             <div class="chat-header">
-                <div style="display:flex;align-items:center;gap:12px">
-                    <span style="font-size:24px">🎨</span>
-                    <span style="font-weight:500">Kortix AI</span>
-                </div>
                 <button class="btn" onclick="newChat()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/>
@@ -385,6 +399,8 @@
         let currentModel = { name: 'Claude 3.5 Sonnet', emoji: '🤖' };
         
         const OPENROUTER_API_KEY = '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';
+        const OR_SITE_URL = window.location.origin || 'https://kortix.com';
+        const OR_APP_NAME = 'Kortix AI';
         
         // Sélection du meilleur modèle selon la tâche
         function selectBestModel(query) {
@@ -456,8 +472,22 @@
             callOpenRouter(message);
         }
         
+        // Messages de statut variés
+        const statusMessages = [
+            'Configuration de l\'IA',
+            'Analyse en cours',
+            'Traitement de la requête',
+            'Génération de la réponse',
+            'Optimisation du résultat',
+            'Finalisation'
+        ];
+        
+        function getRandomStatus() {
+            return statusMessages[Math.floor(Math.random() * statusMessages.length)];
+        }
+        
         // Ajouter un message au chat
-        function addMessage(role, content) {
+        function addMessage(role, content, showStatus = false) {
             messages.push({ role, content });
             
             const chatMessages = document.getElementById('chatMessages');
@@ -465,11 +495,14 @@
             msgDiv.className = 'message ' + role;
             
             if (role === 'assistant') {
-                msgDiv.innerHTML = `
-                    <div class="model-badge">
-                        <span>${currentModel.emoji}</span>
-                        <span>${currentModel.name}</span>
+                const statusHtml = showStatus ? `
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>${getRandomStatus()}...</span>
                     </div>
+                ` : '';
+                msgDiv.innerHTML = `
+                    ${statusHtml}
                     <div class="message-content">${formatContent(content)}</div>
                 `;
             } else {
@@ -493,12 +526,12 @@
             isGenerating = true;
             currentModel = selectBestModel(userMessage);
             
-            // Afficher le loader
+            // Afficher le loader minimal
             const chatMessages = document.getElementById('chatMessages');
             const loader = document.createElement('div');
             loader.className = 'loading';
             loader.id = 'loader';
-            loader.innerHTML = `<div class="spinner"></div> ${currentModel.emoji} ${currentModel.name} génère...`;
+            loader.innerHTML = `<div class="spinner"></div> ${getRandomStatus()}...`;
             chatMessages.appendChild(loader);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
@@ -506,10 +539,10 @@
                 const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer ' + OPENROUTER_API_KEY,
+                        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Kortix AI'
+                        'HTTP-Referer': OR_SITE_URL,
+                        'X-Title': OR_APP_NAME
                     },
                     body: JSON.stringify({
                         model: currentModel.id,
@@ -530,10 +563,6 @@
                 const assistantDiv = document.createElement('div');
                 assistantDiv.className = 'message assistant';
                 assistantDiv.innerHTML = `
-                    <div class="model-badge">
-                        <span>${currentModel.emoji}</span>
-                        <span>${currentModel.name}</span>
-                    </div>
                     <div class="message-content" id="streamContent"></div>
                 `;
                 chatMessages.appendChild(assistantDiv);
