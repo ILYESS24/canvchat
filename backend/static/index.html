@@ -379,13 +379,29 @@
             <div class="chat-messages" id="chatMessages"></div>
             
             <div class="chat-input-area">
-                <textarea 
-                    class="chat-input" 
-                    id="chatInput" 
-                    placeholder="Décris ce dont tu as besoin..."
-                    rows="2"
-                    onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"
-                ></textarea>
+                <div style="display: flex; align-items: flex-end; gap: 12px; width: 100%;">
+                    <textarea 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Décris ce dont tu as besoin... (Enter pour envoyer, Shift+Enter pour nouvelle ligne)"
+                        rows="2"
+                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';"
+                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"
+                        onfocus="console.log('🔵 Textarea chat focused')"
+                        style="flex: 1; max-height: 200px; overflow-y: auto;"
+                    ></textarea>
+                    <button 
+                        class="btn btn-send" 
+                        onclick="sendChatMessage()"
+                        id="chatSendBtn"
+                        style="margin-bottom: 8px; min-width: 44px; height: 44px;"
+                        title="Envoyer (Enter)"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -466,13 +482,33 @@
         
         // Envoyer un message depuis le chat
         function sendChatMessage() {
+            console.log('📤 sendChatMessage() appelée depuis le chat');
             const input = document.getElementById('chatInput');
+            
+            if (!input) {
+                console.error('❌ Élément chatInput non trouvé !');
+                return;
+            }
+            
             const message = input.value.trim();
+            console.log('📝 Message du chat:', message);
+            console.log('⏳ isGenerating:', isGenerating);
             
-            if (!message || isGenerating) return;
+            if (!message) {
+                console.log('⚠️ Message vide, annulation');
+                return;
+            }
             
+            if (isGenerating) {
+                console.log('⚠️ Génération en cours, annulation');
+                alert('⏳ Attends que l\'IA finisse de répondre !');
+                return;
+            }
+            
+            console.log('✅ Envoi du message...');
             addMessage('user', message);
             input.value = '';
+            input.style.height = 'auto'; // Reset height
             callOpenRouter(message);
         }
         
@@ -525,10 +561,39 @@
                 .replace(/```([\s\S]*?)```/g, '<pre style="background:#1e1e2e;padding:12px;border-radius:8px;overflow-x:auto">$1</pre>');
         }
         
+        // Mettre à jour l'état des boutons d'envoi
+        function updateSendButtons() {
+            const sendBtn = document.getElementById('sendBtn');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const chatInput = document.getElementById('chatInput');
+            
+            if (isGenerating) {
+                if (sendBtn) sendBtn.disabled = true;
+                if (chatSendBtn) {
+                    chatSendBtn.disabled = true;
+                    chatSendBtn.style.opacity = '0.5';
+                    chatSendBtn.style.cursor = 'not-allowed';
+                }
+                if (chatInput) chatInput.disabled = true;
+            } else {
+                if (sendBtn) sendBtn.disabled = false;
+                if (chatSendBtn) {
+                    chatSendBtn.disabled = false;
+                    chatSendBtn.style.opacity = '1';
+                    chatSendBtn.style.cursor = 'pointer';
+                }
+                if (chatInput) {
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                }
+            }
+        }
+        
         // Appeler le backend FastAPI (qui gère OpenRouter)
         async function callOpenRouter(userMessage) {
             console.log('🚀 Envoi du message:', userMessage);
             isGenerating = true;
+            updateSendButtons();
             currentModel = selectBestModel(userMessage);
             console.log('📊 Modèle sélectionné:', currentModel);
             
@@ -638,6 +703,7 @@
             }
             
             isGenerating = false;
+            updateSendButtons();
         }
         
         // Nouvelle conversation
