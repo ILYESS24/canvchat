@@ -130,30 +130,25 @@
             padding: 10px 16px;
             border-radius: 9999px;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 400;
             cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.8);
         }
         
         .bubble:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px -10px rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
         }
         
         .bubble.active {
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
-            transform: scale(1.05);
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.95);
         }
-        
-        .bubble-slides { background: linear-gradient(135deg, rgba(249,115,22,0.3), rgba(245,158,11,0.3)); border-color: rgba(249,115,22,0.5); }
-        .bubble-code { background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(6,182,212,0.3)); border-color: rgba(59,130,246,0.5); }
-        .bubble-analyse { background: linear-gradient(135deg, rgba(34,197,94,0.3), rgba(16,185,129,0.3)); border-color: rgba(34,197,94,0.5); }
-        .bubble-redaction { background: linear-gradient(135deg, rgba(168,85,247,0.3), rgba(139,92,246,0.3)); border-color: rgba(168,85,247,0.5); }
-        .bubble-creative { background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(244,63,94,0.3)); border-color: rgba(236,72,153,0.5); }
-        .bubble-traduction { background: linear-gradient(135deg, rgba(20,184,166,0.3), rgba(6,182,212,0.3)); border-color: rgba(20,184,166,0.5); }
-        .bubble-resume { background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(59,130,246,0.3)); border-color: rgba(99,102,241,0.5); }
-        .bubble-math { background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(249,115,22,0.3)); border-color: rgba(234,179,8,0.5); }
         
         .hint {
             color: rgba(255,255,255,0.3);
@@ -324,28 +319,28 @@
             </div>
             
             <div class="bubbles">
-                <div class="bubble bubble-slides" onclick="selectBubble(this, 'slides', 'Crée une présentation de 5 slides sur : ')">
+                <div class="bubble" onclick="selectBubble(this, 'slides', 'Crée une présentation de 5 slides sur : ')">
                     <span>📊</span><span>Slides</span>
                 </div>
-                <div class="bubble bubble-code" onclick="selectBubble(this, 'code', 'Écris du code propre pour : ')">
+                <div class="bubble" onclick="selectBubble(this, 'code', 'Écris du code propre pour : ')">
                     <span>💻</span><span>Code</span>
                 </div>
-                <div class="bubble bubble-analyse" onclick="selectBubble(this, 'analyse', 'Analyse en détail : ')">
+                <div class="bubble" onclick="selectBubble(this, 'analyse', 'Analyse en détail : ')">
                     <span>📈</span><span>Analyse</span>
                 </div>
-                <div class="bubble bubble-redaction" onclick="selectBubble(this, 'redaction', 'Rédige un texte professionnel sur : ')">
+                <div class="bubble" onclick="selectBubble(this, 'redaction', 'Rédige un texte professionnel sur : ')">
                     <span>✍️</span><span>Rédaction</span>
                 </div>
-                <div class="bubble bubble-creative" onclick="selectBubble(this, 'creative', 'Génère des idées créatives pour : ')">
+                <div class="bubble" onclick="selectBubble(this, 'creative', 'Génère des idées créatives pour : ')">
                     <span>🎨</span><span>Créatif</span>
                 </div>
-                <div class="bubble bubble-traduction" onclick="selectBubble(this, 'traduction', 'Traduis en anglais, espagnol et allemand : ')">
+                <div class="bubble" onclick="selectBubble(this, 'traduction', 'Traduis en anglais, espagnol et allemand : ')">
                     <span>🌐</span><span>Traduction</span>
                 </div>
-                <div class="bubble bubble-resume" onclick="selectBubble(this, 'resume', 'Fais un résumé de : ')">
+                <div class="bubble" onclick="selectBubble(this, 'resume', 'Fais un résumé de : ')">
                     <span>📝</span><span>Résumé</span>
                 </div>
-                <div class="bubble bubble-math" onclick="selectBubble(this, 'math', 'Résous ce problème mathématique : ')">
+                <div class="bubble" onclick="selectBubble(this, 'math', 'Résous ce problème mathématique : ')">
                     <span>🔢</span><span>Maths</span>
                 </div>
             </div>
